@@ -1,3 +1,14 @@
+# Some cPanel/Apache setups don't map these extensions to a JS/CSS MIME
+# type by default, which serves the built assets as application/octet-stream
+# — browsers then refuse to execute the module script (strict MIME
+# checking) and the whole app fails to mount, leaving a blank page.
+<IfModule mod_mime.c>
+  AddType application/javascript .js .mjs
+  AddType text/css .css
+  AddType image/svg+xml .svg
+  AddType application/json .json
+</IfModule>
+
 # Serves the React SPA correctly on cPanel/Apache: direct links and page
 # refreshes on client-side routes (e.g. /dashboard, /admin/users) must load
 # index.html and let React Router take over, instead of 404ing.
