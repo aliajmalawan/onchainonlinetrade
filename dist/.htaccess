@@ -1,0 +1,40 @@
+# Some cPanel/Apache setups don't map these extensions to a JS/CSS MIME
+# type by default, which serves the built assets as application/octet-stream
+# — browsers then refuse to execute the module script (strict MIME
+# checking) and the whole app fails to mount, leaving a blank page.
+<IfModule mod_mime.c>
+  AddType application/javascript .js .mjs
+  AddType text/css .css
+  AddType image/svg+xml .svg
+  AddType application/json .json
+</IfModule>
+
+# Serves the React SPA correctly on cPanel/Apache: direct links and page
+# refreshes on client-side routes (e.g. /dashboard, /admin/users) must load
+# index.html and let React Router take over, instead of 404ing.
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteBase /
+
+  # Real files and directories (built assets, favicon, the PHP API,
+  # uploaded files, etc.) are served as-is.
+  RewriteCond %{REQUEST_FILENAME} -f [OR]
+  RewriteCond %{REQUEST_FILENAME} -d
+  RewriteRule ^ - [L]
+
+  # Never rewrite API or uploaded-file requests.
+  RewriteRule ^(api|uploads)/ - [L]
+
+  # Everything else is a client-side route — hand it to the SPA shell.
+  RewriteRule ^ index.html [L]
+</IfModule>
+
+# Static assets are content-hashed by the Vite build, so they're safe to
+# cache aggressively; index.html must always be revalidated.
+<IfModule mod_expires.c>
+  ExpiresActive On
+  ExpiresByType text/html "access plus 0 seconds"
+  ExpiresByType application/javascript "access plus 1 year"
+  ExpiresByType text/css "access plus 1 year"
+  ExpiresByType image/svg+xml "access plus 1 year"
+</IfModule>

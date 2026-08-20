@@ -3,8 +3,10 @@ node_modules
 .pnp
 .pnp.js
 
-# Build output
-dist
+# Build output — dist/ IS committed on purpose: the cPanel host's Git
+# deployment shell doesn't reliably have npm/node, so the production
+# bundle is built locally and shipped as-is. Rebuild with `npm run build`
+# and commit the result whenever src/ changes.
 dist-ssr
 *.local
 

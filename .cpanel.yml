@@ -7,7 +7,8 @@
 # already expects by default, so no VITE_BACKEND_URL override is needed):
 #
 #   public_html/
-#     index.html, assets/...     <- built frontend (npm run build)
+#     index.html, assets/...     <- built frontend (dist/, committed as-is —
+#                                    see note below on why it's not built here)
 #     helpers.php, db.php        <- shared PHP includes (relative requires
 #                                    from api/*.php expect these one level up)
 #     config.php                 <- real DB credentials; NEVER touched by a
@@ -21,14 +22,20 @@
 # backend/setup_db.php and backend/scripts/ are intentionally never
 # published — they're one-time/maintenance tools, not safe to leave
 # web-accessible.
+#
+# NOTE on the frontend: this deployment does NOT run `npm run build` on the
+# server. Many shared-hosting Git deployment shells don't have npm/node on
+# PATH (or it silently fails), which previously left the *raw, unbuilt*
+# source (src/main.jsx etc.) sitting in public_html — a blank page, since
+# browsers refuse to execute .jsx as a module script. Instead, `dist/` is
+# built locally and committed to the repo — rebuild with `npm run build`
+# and commit the result whenever src/ changes, before pushing.
 
 deployment:
   tasks:
     - export DEPLOYPATH=$HOME/public_html
 
     # --- Frontend -------------------------------------------------------
-    - /usr/bin/npm install
-    - /usr/bin/npm run build
     - /bin/cp -R dist/. $DEPLOYPATH/
 
     # --- Backend ----------------------------------------------------------
