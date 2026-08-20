@@ -1,0 +1,7 @@
+# Pass the Authorization header through to PHP (needed under Apache/LiteSpeed).
+RewriteEngine On
+RewriteCond %{HTTP:Authorization} ^(.+)$
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%1]
+
+# Don't list directory contents.
+Options -Indexes

@@ -1,0 +1,47 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.js
+
+# Build output
+dist
+dist-ssr
+*.local
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Backend secrets & user-uploaded files — never committed, never
+# overwritten by a deploy once they exist on the live server.
+backend/config.php
+backend/uploads/*
+!backend/uploads/.gitkeep
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Claude Code local tool state — machine-specific, not shared
+.claude/settings.local.json
+.claude/scheduled_tasks.lock
+
+# Scratch/debug scripts never meant to ship — several of these are
+# unauthenticated data-mutation one-offs (change a user's KYC/profit state
+# by id/email, no auth check) that must never be web-accessible.
+tmp_*.php

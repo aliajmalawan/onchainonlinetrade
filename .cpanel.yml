@@ -1,0 +1,45 @@
+---
+# cPanel Git Version Control deployment.
+# Set this repo's "Deployment" checkbox on in cPanel — every deploy runs
+# these tasks from the repo's checkout directory (this project's root).
+#
+# Layout this produces under public_html/ (matches what the frontend code
+# already expects by default, so no VITE_BACKEND_URL override is needed):
+#
+#   public_html/
+#     index.html, assets/...     <- built frontend (npm run build)
+#     helpers.php, db.php        <- shared PHP includes (relative requires
+#                                    from api/*.php expect these one level up)
+#     config.php                 <- real DB credentials; NEVER touched by a
+#                                    deploy once it exists (gitignored, so it
+#                                    isn't part of the checkout at all)
+#     api/                       <- backend/api/*.php endpoints
+#     uploads/                   <- backend/uploads/* (KYC docs, deposit
+#                                    proofs/QRs) — accumulates on the server,
+#                                    independent of git
+#
+# backend/setup_db.php and backend/scripts/ are intentionally never
+# published — they're one-time/maintenance tools, not safe to leave
+# web-accessible.
+
+deployment:
+  tasks:
+    - export DEPLOYPATH=$HOME/public_html
+
+    # --- Frontend -------------------------------------------------------
+    - /usr/bin/npm install
+    - /usr/bin/npm run build
+    - /bin/cp -R dist/. $DEPLOYPATH/
+
+    # --- Backend ----------------------------------------------------------
+    - /bin/cp backend/helpers.php backend/db.php $DEPLOYPATH/
+    - /bin/mkdir -p $DEPLOYPATH/api
+    - /bin/cp -R backend/api/. $DEPLOYPATH/api/
+    - /bin/mkdir -p $DEPLOYPATH/uploads
+    - /bin/cp -R backend/uploads/. $DEPLOYPATH/uploads/
+
+    # config.php holds real production DB credentials. It's gitignored, so
+    # it's never part of this checkout — this only seeds it from the
+    # template the very first time (when nothing's live yet) and otherwise
+    # leaves whatever's already on the server completely alone.
+    - "[ -f $DEPLOYPATH/config.php ] || /bin/cp backend/config.example.php $DEPLOYPATH/config.php"
