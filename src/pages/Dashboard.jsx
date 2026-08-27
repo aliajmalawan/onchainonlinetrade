@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { getMarkets } from '../lib/api'
+import { getMarkets, getBinance24hrTickers } from '../lib/api'
 import {
   apiGetPortfolio,
   apiGetUsers,
@@ -10,7 +10,7 @@ import {
   apiAdminGetDepositAddresses,
 } from '../lib/backend'
 import StatCard from '../components/StatCard'
-import CoinTable from '../components/CoinTable'
+import CoinTickerList from '../components/CoinTickerList'
 import { usd, pct, changeClass } from '../lib/format'
 
 function DepositIcon() {
@@ -200,6 +200,73 @@ export default function Dashboard() {
     return coins.slice(0, 10)
   }, [coins, coinTab])
 
+  // Whichever coin list this dashboard is actually showing — CoinGecko's
+  // own snapshot barely moves within a few seconds, so a live Binance poll
+  // (below) pushes fresher price/24h stats into these same rows.
+  const visibleCoins = isAdmin ? topMovers : tabCoins
+
+  const [liveMap, setLiveMap] = useState({})
+  const [flashMap, setFlashMap] = useState({})
+  const prevPricesRef = useRef({})
+  const flashTimersRef = useRef({})
+
+  useEffect(() => {
+    const symbols = visibleCoins.map((c) => c.symbol?.toUpperCase()).filter(Boolean)
+    if (!symbols.length) return
+
+    let cancelled = false
+    function poll() {
+      getBinance24hrTickers(symbols)
+        .then((data) => {
+          if (cancelled) return
+          setLiveMap((prev) => ({ ...prev, ...data }))
+
+          Object.entries(data).forEach(([symbol, live]) => {
+            const prevPrice = prevPricesRef.current[symbol]
+            if (prevPrice != null && live.price !== prevPrice) {
+              const direction = live.price > prevPrice ? 'up' : 'down'
+              setFlashMap((prev) => ({ ...prev, [symbol]: direction }))
+              clearTimeout(flashTimersRef.current[symbol])
+              flashTimersRef.current[symbol] = setTimeout(() => {
+                setFlashMap((prev) => ({ ...prev, [symbol]: null }))
+              }, 550)
+            }
+            prevPricesRef.current[symbol] = live.price
+          })
+        })
+        .catch(() => {
+          // Binance rejects the whole batch if any symbol has no USDT
+          // market (common for small-cap gainers/losers) — just stay on
+          // CoinGecko's own values for this poll rather than breaking the list.
+        })
+    }
+    poll()
+    const id = setInterval(poll, 3000)
+    return () => {
+      cancelled = true
+      clearInterval(id)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleCoins.map((c) => c.id).join(',')])
+
+  useEffect(() => () => Object.values(flashTimersRef.current).forEach(clearTimeout), [])
+
+  const liveVisibleCoins = useMemo(
+    () =>
+      visibleCoins.map((c) => {
+        const live = liveMap[c.symbol?.toUpperCase()]
+        return {
+          ...c,
+          current_price: live?.price ?? c.current_price,
+          price_change_percentage_24h: live?.changePct ?? c.price_change_percentage_24h,
+          total_volume: live?.volume ?? c.total_volume,
+          high_24h: live?.high ?? c.high_24h,
+          flash: flashMap[c.symbol?.toUpperCase()] || null,
+        }
+      }),
+    [visibleCoins, liveMap, flashMap]
+  )
+
   if (isAdmin) {
     return (
       <div>
@@ -254,7 +321,7 @@ export default function Dashboard() {
             </button>
           </div>
         )}
-        {status === 'ready' && <CoinTable coins={topMovers} />}
+        {status === 'ready' && <CoinTickerList coins={liveVisibleCoins} />}
       </div>
     )
   }
@@ -322,7 +389,7 @@ export default function Dashboard() {
       )}
       {status === 'ready' && (
         <div className="mt-24">
-          <CoinTable coins={tabCoins} />
+          <CoinTickerList coins={liveVisibleCoins} />
         </div>
       )}
     </div>

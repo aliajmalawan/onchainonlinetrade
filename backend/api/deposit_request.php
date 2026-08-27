@@ -8,17 +8,14 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') json_err('Method not allowed', 405);
 // Submitted as multipart/form-data because a transaction screenshot is required.
 $currency = strtoupper(trim($_POST['currency'] ?? ''));
 $network  = strtoupper(trim($_POST['network'] ?? ''));
-$amount   = isset($_POST['amount']) ? (float) $_POST['amount'] : 0;
+// The user no longer states an amount or reference up front — an admin
+// sets the real amount (from the screenshot) when reviewing the request,
+// via admin/update_deposit_status.php.
+$amount   = 0;
 $txId     = trim($_POST['txId'] ?? '');
 
-if ($currency === '' || $network === '' || $amount <= 0) {
-    json_err('Currency, network and amount are required.', 400);
-}
-if ($amount < 10) {
-    json_err('Minimum deposit is 10.00.', 400);
-}
-if ($txId === '') {
-    json_err('Transaction ID / reference is required.', 400);
+if ($currency === '' || $network === '') {
+    json_err('Currency and network are required.', 400);
 }
 if (empty($_FILES['proof']) || !is_uploaded_file($_FILES['proof']['tmp_name'])) {
     json_err('A screenshot of the transaction is required.', 400);

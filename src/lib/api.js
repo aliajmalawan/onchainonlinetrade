@@ -117,6 +117,7 @@ export async function getBinanceKlines(symbol, interval, limit = 60) {
     high: parseFloat(k[2]),
     low: parseFloat(k[3]),
     close: parseFloat(k[4]),
+    volume: parseFloat(k[5]),
   }))
 }
 
@@ -133,6 +134,39 @@ export async function getBinancePrice(symbol) {
   return parseFloat(data.price)
 }
 
+// Live 24hr stats (price, % change, high, volume) for a set of coin
+// symbols, paired against USDT — used to make a coin list actually tick in
+// real time, since CoinGecko's markets snapshot (above) only moves every
+// ~1-5 minutes. Fetched one symbol per request (not Binance's batch
+// `symbols=[...]` param): that endpoint fails the *entire* batch — with no
+// CORS header on the error, so the browser can't even read why — the
+// moment a single symbol has no USDT market, which happens often on a
+// gainers/losers list full of volatile small-caps. A per-symbol request
+// lets the rest still update live when one coin's pair doesn't exist.
+export async function getBinance24hrTickers(symbols) {
+  const unique = [...new Set(symbols.map((s) => s.toUpperCase()))]
+  const results = await Promise.allSettled(
+    unique.map((symbol) =>
+      fetch(`${BINANCE_BASE}/ticker/24hr?symbol=${symbol}USDT`)
+        .then((res) => (res.ok ? res.json() : Promise.reject(new Error(`${symbol} unavailable`))))
+        .then((t) => [
+          symbol,
+          {
+            price: parseFloat(t.lastPrice),
+            changePct: parseFloat(t.priceChangePercent),
+            high: parseFloat(t.highPrice),
+            volume: parseFloat(t.quoteVolume),
+          },
+        ])
+    )
+  )
+  const map = {}
+  results.forEach((r) => {
+    if (r.status === 'fulfilled') map[r.value[0]] = r.value[1]
+  })
+  return map
+}
+
 export async function getCoinChart(coin, interval, limit = 60) {
   try {
     return await getBinanceKlines(coin.symbol, interval, limit)
@@ -143,7 +177,7 @@ export async function getCoinChart(coin, interval, limit = 60) {
         if (Array.isArray(market?.prices) && market.prices.length) {
           // CoinGecko's market_chart endpoint only gives a single price per
           // point (no OHLC) — degrade to flat candles rather than fail.
-          return market.prices.slice(-limit).map((p) => ({ t: p[0], open: p[1], high: p[1], low: p[1], close: p[1] }))
+          return market.prices.slice(-limit).map((p) => ({ t: p[0], open: p[1], high: p[1], low: p[1], close: p[1], volume: 0 }))
         }
       } catch (fallbackError) {
         // ignore fallback failure and continue with original error below

@@ -69,7 +69,7 @@ function DepositCard({ d, active, onViewDetails }) {
   )
 }
 
-function DepositDetailPanel({ d, detailStatus, onDetailStatusChange, onSave, busy, error }) {
+function DepositDetailPanel({ d, detailStatus, onDetailStatusChange, detailAmount, onDetailAmountChange, onSave, busy, error }) {
   return (
     <div className="panel panel-pad wd-detail-panel">
       <h2 style={{ fontSize: 18 }}>Deposit request details</h2>
@@ -89,8 +89,19 @@ function DepositDetailPanel({ d, detailStatus, onDetailStatusChange, onSave, bus
             <div>{fmtDate(d.createdAt)}</div>
           </div>
           <div className="field">
-            <label>Amount</label>
-            <div>{num(d.amount)} {d.currency}</div>
+            <label>Amount ({d.currency})</label>
+            <input
+              className="input"
+              type="number"
+              min="0"
+              step="any"
+              value={detailAmount}
+              onChange={(e) => onDetailAmountChange(e.target.value)}
+              placeholder="Enter the amount from the screenshot"
+            />
+            <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
+              The user no longer states an amount — set it here from the transaction screenshot.
+            </div>
           </div>
           <div className="field">
             <label>Status</label>
@@ -135,7 +146,7 @@ function DepositDetailPanel({ d, detailStatus, onDetailStatusChange, onSave, bus
               <option value="failed">Reject</option>
             </select>
             <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-              Setting this to "completed" credits {num(d.amount)} {d.currency} to the user's holdings.
+              Setting this to "completed" credits {num(parseFloat(detailAmount) || 0)} {d.currency} to the user's holdings.
             </div>
           </div>
           <div className="field" style={{ width: '100%' }}>
@@ -154,6 +165,7 @@ export default function DepositRequests() {
   const [busyId, setBusyId] = useState(null)
   const [selectedDeposit, setSelectedDeposit] = useState(null)
   const [detailStatus, setDetailStatus] = useState('pending')
+  const [detailAmount, setDetailAmount] = useState('')
   const [error, setError] = useState('')
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
@@ -165,10 +177,12 @@ export default function DepositRequests() {
   useEffect(() => {
     if (!selectedDeposit) {
       setDetailStatus('pending')
+      setDetailAmount('')
       return
     }
 
     setDetailStatus(selectedDeposit.status)
+    setDetailAmount(selectedDeposit.amount > 0 ? String(selectedDeposit.amount) : '')
   }, [selectedDeposit])
 
   const filteredDeposits = useMemo(() => {
@@ -198,7 +212,9 @@ export default function DepositRequests() {
     try {
       const updated = await apiAdminUpdateDepositStatus(
         selectedDeposit.id,
-        detailStatus
+        detailStatus,
+        null,
+        detailAmount === '' ? null : parseFloat(detailAmount)
       )
       setDeposits((prev) => prev?.map((d) => (d.id === updated.id ? { ...d, ...updated } : d)))
       setSelectedDeposit((prev) => (prev ? { ...prev, ...updated } : prev))
@@ -278,6 +294,8 @@ export default function DepositRequests() {
                 d={selectedDeposit}
                 detailStatus={detailStatus}
                 onDetailStatusChange={setDetailStatus}
+                detailAmount={detailAmount}
+                onDetailAmountChange={setDetailAmount}
                 onSave={handleSaveDetails}
                 busy={busyId === selectedDeposit.id}
                 error={error}

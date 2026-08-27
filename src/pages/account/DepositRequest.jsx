@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { apiGetDepositAddresses, apiSubmitDepositRequest } from '../../lib/backend'
 
-const MIN_AMOUNT = 10
 const ROOT = (import.meta.env.VITE_BACKEND_URL || '/api').replace(/\/api$/, '')
 const qrUrl = (path) => (path ? ROOT + '/' + path.replace(/^\//, '') : null)
 
@@ -11,8 +10,6 @@ export default function DepositRequest() {
   const [addresses, setAddresses] = useState(null)
   const [currency, setCurrency] = useState('')
   const [network, setNetwork] = useState('')
-  const [amount, setAmount] = useState('')
-  const [txId, setTxId] = useState('')
   const [proofFile, setProofFile] = useState(null)
   const [fieldErrors, setFieldErrors] = useState({})
   const [formError, setFormError] = useState('')
@@ -59,10 +56,6 @@ export default function DepositRequest() {
 
   function validate() {
     const errs = {}
-    const amt = parseFloat(amount)
-    if (!amount || Number.isNaN(amt)) errs.amount = 'Enter a deposit amount.'
-    else if (amt < MIN_AMOUNT) errs.amount = `Minimum deposit is ${MIN_AMOUNT.toFixed(2)} ${currency}.`
-    if (!txId.trim()) errs.txId = 'Transaction ID / reference is required.'
     if (!proofFile) errs.proofFile = 'Upload a screenshot of the transaction.'
     return errs
   }
@@ -74,13 +67,10 @@ export default function DepositRequest() {
     setFieldErrors(errs)
     if (Object.keys(errs).length) return
 
-    const amt = parseFloat(amount)
     setBusy(true)
     try {
-      await apiSubmitDepositRequest({ currency, network, amount: amt, txId, proofFile })
+      await apiSubmitDepositRequest({ currency, network, proofFile })
       setShowSuccessPopup(true)
-      setAmount('')
-      setTxId('')
       setProofFile(null)
       setFieldErrors({})
     } catch (err) {
@@ -156,44 +146,6 @@ export default function DepositRequest() {
               <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
                 Send {currency} ({network}) to this address only.
               </div>
-            </div>
-
-            <div className={'field' + (fieldErrors.amount ? ' has-error' : '')}>
-              <label>Amount ({currency})</label>
-              <input
-                className="input"
-                type="number"
-                min="0"
-                step="any"
-                value={amount}
-                onChange={(e) => {
-                  setAmount(e.target.value)
-                  clearFieldError('amount')
-                }}
-                placeholder="Enter amount"
-              />
-              {fieldErrors.amount ? (
-                <div className="field-error">{fieldErrors.amount}</div>
-              ) : (
-                <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-                  Minimum deposit is {MIN_AMOUNT.toFixed(2)} {currency}.
-                </div>
-              )}
-            </div>
-
-            <div className={'field' + (fieldErrors.txId ? ' has-error' : '')}>
-              <label>Transaction ID / Reference</label>
-              <input
-                className="input"
-                type="text"
-                value={txId}
-                onChange={(e) => {
-                  setTxId(e.target.value)
-                  clearFieldError('txId')
-                }}
-                placeholder="Transaction hash"
-              />
-              {fieldErrors.txId && <div className="field-error">{fieldErrors.txId}</div>}
             </div>
 
             <div className={'field file-field' + (fieldErrors.proofFile ? ' has-error' : '')}>

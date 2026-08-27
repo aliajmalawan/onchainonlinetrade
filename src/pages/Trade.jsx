@@ -27,7 +27,6 @@ export default function Trade() {
   const [pendingTrade, setPendingTrade] = useState(null)
   const [tradeResult, setTradeResult] = useState(null)
   const [tradeResultOpen, setTradeResultOpen] = useState(false)
-  const [currentDateTime, setCurrentDateTime] = useState(new Date())
   const [tradeLivePrice, setTradeLivePrice] = useState(null)
 
   useEffect(() => {
@@ -89,8 +88,11 @@ export default function Trade() {
     return map
   }, [holdings])
 
-  // Sell can only offer coins the user actually holds.
-  const sellableCoins = holdings.map((h) => priceById[h.coinId]).filter(Boolean)
+  // Every trade — Buy Long or Sell Short, on whichever coin is picked as the
+  // {SYMBOL}/USDT price reference — is staked and settled in USDT alone, so
+  // both directions read from the same USDT holding rather than the coin's.
+  const usdtHolding = holdingByCoin['tether']
+  const usdtRef = priceById['tether'] ?? { id: 'tether', symbol: 'usdt', name: 'Tether', image: null, current_price: 1 }
 
   // Same calculation as the Dashboard's "Portfolio value" stat.
   const portfolioValue = useMemo(() => {
@@ -103,7 +105,6 @@ export default function Trade() {
   }, [holdings, priceById])
 
   const coin = priceById[coinId]
-  const heldHolding = holdingByCoin[coinId]
   const livePrice = coin?.current_price ?? null
 
   // Deliberately keyed on coinId (not the `coin` object) plus whether the
@@ -133,7 +134,7 @@ export default function Trade() {
 
   function switchSide(next) {
     setSide(next)
-    setCoinId(next === 'buy' ? 'bitcoin' : sellableCoins[0]?.id || '')
+    setCoinId((prev) => prev || 'bitcoin')
     setAmount('')
     setError('')
     setSuccess('')
@@ -150,7 +151,6 @@ export default function Trade() {
       openedAt: new Date(),
     }
     setPendingTrade(tradeToStart)
-    setCurrentDateTime(new Date())
     setTradeSecondsLeft(duration)
     setTradeTimerActive(true)
     setTradeResult(null)
@@ -164,10 +164,11 @@ export default function Trade() {
     if (!(amt >= 100)) return 'Enter an amount of at least 100.'
     if (coinToUse.current_price == null) return 'Live price unavailable, try again shortly.'
 
+    // Every trade is staked in USDT regardless of which pair it references,
+    // so a Sell Short needs USDT margin on hand, not the referenced coin.
     if (exec.side === 'sell') {
-      const held = holdingByCoin[exec.coinId]
-      if (!held) return "You don't hold this coin."
-      if (amt > held.amount) return `You only hold ${num(held.amount)} ${coinToUse.symbol.toUpperCase()}.`
+      if (!usdtHolding) return "You don't hold any USDT."
+      if (amt > usdtHolding.amount) return `You only hold ${num(usdtHolding.amount)} USDT.`
     }
     return true
   }
@@ -190,11 +191,12 @@ export default function Trade() {
     startTradeTimer(trade)
   }
 
-  function handleTradeComplete(trade, serverOutcome = null) {
+  function handleTradeComplete(trade, serverOutcome = null, settlementPrice = null) {
     if (!trade) return
     const outcome = serverOutcome === 'Profit' ? 'Profit' : (serverOutcome === 'Loss' ? 'Loss' : (user?.profitMode ? 'Profit' : 'Loss'))
     const coinSymbol = priceById[trade.coinId]?.symbol?.toUpperCase() || ''
     const result = outcome === 'Profit' ? settleWinningTrade(trade, coinSymbol) : settleLosingTrade(trade)
+    result.settlementPrice = settlementPrice
 
     setTradeResult(result)
     setTradeResultOpen(true)
@@ -232,10 +234,12 @@ export default function Trade() {
     if (!(amt >= 100)) return setError('Enter an amount of at least 100.')
     if (coinToUse.current_price == null) return setError('Live price unavailable, try again shortly.')
 
-    const sellHolding = holdingByCoin[exec.coinId]
+    // The selected coin only supplies the {SYMBOL}/USDT price reference for
+    // the timer/result popups — every trade is actually staked and settled
+    // against the user's USDT holding, never the referenced coin's.
     if (exec.side === 'sell') {
-      if (!sellHolding) return setError("You don't hold this coin.")
-      if (amt > sellHolding.amount) return setError(`You only hold ${num(sellHolding.amount)} ${coinToUse.symbol.toUpperCase()}.`)
+      if (!usdtHolding) return setError("You don't hold any USDT.")
+      if (amt > usdtHolding.amount) return setError(`You only hold ${num(usdtHolding.amount)} USDT.`)
     }
 
     setBusy(true)
@@ -243,21 +247,21 @@ export default function Trade() {
       const execPrice = coinToUse.current_price
       const response = await updateWallet({
         side: exec.side,
-        holdingId: sellHolding?.id,
-        coinId: coinToUse.id,
-        symbol: coinToUse.symbol,
-        name: coinToUse.name,
-        image: coinToUse.image,
+        holdingId: usdtHolding?.id,
+        coinId: usdtRef.id,
+        symbol: usdtRef.symbol,
+        name: usdtRef.name,
+        image: usdtRef.image,
         amount: amt,
-        price: execPrice,
+        price: 1,
         conditionPct: exec.conditionPct ?? 0,
         duration: exec.deliveryTime ?? null,
         openingPrice: exec.purchasePrice ?? null,
       })
       setSuccess(
         exec.side === 'buy'
-          ? `Bought ${num(amt)} ${coinToUse.symbol.toUpperCase()} at ${usd(execPrice)}.`
-          : `Sold ${num(amt)} ${coinToUse.symbol.toUpperCase()} at ${usd(execPrice)}.`
+          ? `Bought Long ${num(amt)} USDT on ${coinToUse.symbol.toUpperCase()}/USDT at ${usd(execPrice)}.`
+          : `Sold Short ${num(amt)} USDT on ${coinToUse.symbol.toUpperCase()}/USDT at ${usd(execPrice)}.`
       )
       setAmount('')
       refreshHoldings()
@@ -273,13 +277,14 @@ export default function Trade() {
     if (!tradeTimerActive) return
     if (tradeSecondsLeft <= 0) {
       const completedTrade = pendingTrade
+      const settlementPrice = tradeLivePrice ?? priceById[completedTrade?.coinId]?.current_price ?? null
       setTradeTimerActive(false)
       setPendingTrade(null)
       if (completedTrade) {
         submit(completedTrade).then((response) => {
-          handleTradeComplete(completedTrade, response?.result)
+          handleTradeComplete(completedTrade, response?.result, settlementPrice)
         }).catch(() => {
-          handleTradeComplete(completedTrade, 'Loss')
+          handleTradeComplete(completedTrade, 'Loss', settlementPrice)
         })
       }
       return
@@ -287,18 +292,51 @@ export default function Trade() {
 
     const timerId = setTimeout(() => {
       setTradeSecondsLeft((seconds) => seconds - 1)
-      setCurrentDateTime(new Date())
     }, 1000)
     return () => clearTimeout(timerId)
   }, [tradeTimerActive, tradeSecondsLeft, pendingTrade])
 
-  const coinList = side === 'buy' ? coins : sellableCoins
+  // Both directions trade the same full market list — Sell Short doesn't
+  // require owning the referenced coin, only enough USDT margin (checked
+  // separately), since every trade settles in USDT regardless of pair.
+  const coinList = coins
   const estTotal = livePrice != null && amount ? livePrice * parseFloat(amount) : null
 
   return (
     <div>
-      {tradeTimerActive && (
-        <div
+      {tradeTimerActive && pendingTrade && (() => {
+        const deliveryCoin = priceById[pendingTrade.coinId]
+        const pairLabel = `${deliveryCoin?.symbol?.toUpperCase() ?? ''}/USDT`
+        const isBuy = pendingTrade.side === 'buy'
+        const directionColor = isBuy ? '#16a34a' : '#dc2626'
+        const currentPrice = tradeLivePrice != null ? tradeLivePrice : deliveryCoin?.current_price ?? null
+        const purchasePrice = pendingTrade.purchasePrice
+        let currentColor = '#111827'
+        if (currentPrice != null && purchasePrice != null) {
+          const favorable = isBuy ? currentPrice >= purchasePrice : currentPrice <= purchasePrice
+          currentColor = favorable ? '#16a34a' : '#dc2626'
+        }
+
+        const totalSeconds = pendingTrade.deliveryTime || 1
+        const fraction = Math.max(0, Math.min(1, tradeSecondsLeft / totalSeconds))
+        const RADIUS = 42
+        const CIRC = 2 * Math.PI * RADIUS
+        const mm = String(Math.floor(tradeSecondsLeft / 60)).padStart(2, '0')
+        const ss = String(tradeSecondsLeft % 60).padStart(2, '0')
+
+        const openedAt = pendingTrade.openedAt
+        const openedDate = openedAt ? openedAt.toLocaleDateString('en-US') : '—'
+        const openedTime = openedAt ? openedAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''
+
+        const row = (label, value, color) => (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0' }}>
+            <span style={{ color: '#6b7280', fontSize: 14 }}>{label}</span>
+            <span style={{ color: color || '#111827', fontWeight: 700, fontSize: 14.5 }}>{value}</span>
+          </div>
+        )
+
+        return (
+          <div
             style={{
               position: 'fixed',
               inset: 0,
@@ -313,155 +351,193 @@ export default function Trade() {
               style={{
                 position: 'relative',
                 background: '#fff',
-                padding: 24,
+                padding: '20px 24px 24px',
                 borderRadius: 18,
-                width: 360,
+                width: 380,
                 maxWidth: '95vw',
-                textAlign: 'center',
                 boxShadow: '0 20px 60px rgba(0, 0, 0, 0.18)',
               }}
             >
-              <button
-                type="button"
-                onClick={cancelTrade}
-                aria-label="Cancel trade"
-                title="Cancel trade"
-                style={{
-                  position: 'absolute',
-                  top: 12,
-                  right: 12,
-                  width: 28,
-                  height: 28,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  border: 'none',
-                  background: '#f3f4f6',
-                  color: '#374151',
-                  borderRadius: '50%',
-                  cursor: 'pointer',
-                  fontSize: 16,
-                  lineHeight: 1,
-                }}
-              >
-                ×
-              </button>
-              {pendingTrade && priceById[pendingTrade.coinId] && (
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12 }}>
-                  {priceById[pendingTrade.coinId].image && (
-                    <img
-                      src={priceById[pendingTrade.coinId].image}
-                      alt=""
-                      style={{ width: 24, height: 24, borderRadius: '50%' }}
-                    />
-                  )}
-                  <span style={{ fontSize: 15, fontWeight: 700, color: '#111827' }}>
-                    {priceById[pendingTrade.coinId].name}{' '}
-                    <span style={{ color: '#6b7280', fontWeight: 500 }}>
-                      ({priceById[pendingTrade.coinId].symbol?.toUpperCase()})
-                    </span>
-                  </span>
-                </div>
-              )}
-              <div style={{ fontSize: 16, color: '#374151', marginBottom: 8 }}>Trade Timer</div>
-              <div style={{ fontSize: 48, fontWeight: 700, color: '#111827' }}>{tradeSecondsLeft}</div>
-              <div style={{ marginTop: 12, color: '#374151', fontWeight: 600 }}>
-                Executing your {pendingTrade?.side === 'buy' ? 'Buy Long' : 'Sell Short'} trade.
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 14, borderBottom: '1px solid #eef1f6' }}>
+                <span style={{ fontSize: 17, fontWeight: 700, color: '#111827' }}>{pairLabel} Delivery</span>
+                <button
+                  type="button"
+                  onClick={cancelTrade}
+                  aria-label="Cancel trade"
+                  title="Cancel trade"
+                  style={{
+                    border: 'none',
+                    background: 'transparent',
+                    color: '#6b7280',
+                    cursor: 'pointer',
+                    fontSize: 20,
+                    lineHeight: 1,
+                    padding: 4,
+                  }}
+                >
+                  ×
+                </button>
               </div>
-              <div style={{ marginTop: 18, textAlign: 'left', lineHeight: 1.8, color: '#334155', fontSize: 13.5 }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                  <strong>Purchase Price:</strong>
-                  <span>{pendingTrade?.purchasePrice != null ? usd(pendingTrade.purchasePrice) : '—'}</span>
+
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '26px 0' }}>
+                <svg width={140} height={140} viewBox="0 0 100 100">
+                  <circle cx="50" cy="50" r={RADIUS} fill="none" stroke="#dbeafe" strokeWidth="8" />
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r={RADIUS}
+                    fill="none"
+                    stroke="#2563eb"
+                    strokeWidth="8"
+                    strokeLinecap="round"
+                    strokeDasharray={CIRC}
+                    strokeDashoffset={CIRC * (1 - fraction)}
+                    transform="rotate(-90 50 50)"
+                    style={{ transition: 'stroke-dashoffset 1s linear' }}
+                  />
+                  <text x="50" y="56" textAnchor="middle" fontSize="19" fontWeight="700" fill="#111827" fontFamily="inherit">
+                    {mm}:{ss}
+                  </text>
+                </svg>
+              </div>
+
+              <div style={{ borderTop: '1px solid #eef1f6', borderBottom: '1px solid #eef1f6' }}>
+                {row('Purchase price', purchasePrice != null ? usd(purchasePrice) : '—')}
+                {row('Current price', currentPrice != null ? usd(currentPrice) : '—', currentColor)}
+                {row('Direction', isBuy ? 'Buy Long' : 'Sell Short', directionColor)}
+                {row('Amount', `${pendingTrade.amount ?? '—'} USDT`)}
+                {row('Delivery time', `${pendingTrade.deliveryTime ?? 0}s`)}
+              </div>
+
+              <div style={{ paddingTop: 14 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: '#9ca3af', marginBottom: 4 }}>
+                  OPENED
                 </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                  <strong>Current Price:</strong>
-                  <span>
-                    {tradeLivePrice != null
-                      ? usd(tradeLivePrice)
-                      : pendingTrade
-                      ? usd(priceById[pendingTrade.coinId]?.current_price ?? 0)
-                      : '—'}
-                  </span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                  <strong>Direction:</strong>
-                  <span>{pendingTrade?.side === 'buy' ? 'Buy Long' : 'Sell Short'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                  <strong>Amount:</strong>
-                  <span>{pendingTrade?.amount ?? '—'} {pendingTrade?.coinId ? priceById[pendingTrade.coinId]?.symbol.toUpperCase() : ''}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                  <strong>Delivery Time:</strong>
-                  <span>{pendingTrade?.deliveryTime ?? 0} sec</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                  <strong>Opened:</strong>
-                  <span style={{ whiteSpace: 'nowrap' }}>{pendingTrade?.openedAt ? pendingTrade.openedAt.toLocaleString() : '—'}</span>
-                </div>
-                <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8 }}>
-                  <strong>Current Date & Time:</strong>
-                  <span style={{ whiteSpace: 'nowrap' }}>{currentDateTime.toLocaleString()}</span>
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: '#111827' }}>
+                  {openedDate} - {openedTime}
                 </div>
               </div>
             </div>
           </div>
-      )}
-      {tradeResultOpen && tradeResult && (
-        <div
-          style={{
-            position: 'fixed',
-            inset: 0,
-            background: 'rgba(0, 0, 0, 0.45)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 10000,
-            padding: 20,
-          }}
-        >
+        )
+      })()}
+      {tradeResultOpen && tradeResult && (() => {
+        const trade = tradeResult.trade
+        const resultCoin = priceById[trade.coinId]
+        const pairLabel = `${resultCoin?.symbol?.toUpperCase() ?? ''}/USDT`
+        const isProfit = tradeResult.outcome === 'Profit'
+        const plColor = isProfit ? '#16a34a' : '#dc2626'
+        const plValue = isProfit ? tradeResult.profitAmount : -(tradeResult.lossAmount ?? 0)
+        const plText = `${plValue >= 0 ? '+' : ''}${plValue.toFixed(2)} USDT`
+
+        const openedAt = trade.openedAt
+        const openedDate = openedAt ? openedAt.toLocaleDateString('en-US') : '—'
+        const openedTime = openedAt ? openedAt.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) : ''
+
+        const row = (label, value) => (
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '9px 0' }}>
+            <span style={{ color: '#6b7280', fontSize: 14 }}>{label}</span>
+            <span style={{ color: '#111827', fontWeight: 700, fontSize: 14.5 }}>{value}</span>
+          </div>
+        )
+
+        return (
           <div
             style={{
-              background: '#fff',
-              padding: 24,
-              borderRadius: 18,
-              width: 380,
-              maxWidth: '95vw',
-              textAlign: 'center',
-              boxShadow: '0 20px 60px rgba(0, 0, 0, 0.18)',
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(0, 0, 0, 0.45)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              zIndex: 10000,
+              padding: 20,
             }}
           >
-            <div style={{ fontSize: 16, color: '#374151', marginBottom: 8 }}>Trade complete</div>
-            <div style={{ fontSize: 32, fontWeight: 700, color: tradeResult.outcome === 'Profit' ? '#16a34a' : '#dc2626' }}>
-              {tradeResult.outcome === 'Profit'
-                ? 'Profit'
-                : `${tradeResult.amountText} ${priceById[tradeResult.trade.coinId]?.symbol?.toUpperCase() || ''}`}
-            </div>
-            <div style={{ marginTop: 10, color: '#334155', lineHeight: 1.6 }}>
-              <div><strong>Direction:</strong> {tradeResult.directionLabel}</div>
-              {tradeResult.outcome === 'Profit' ? (
-                <div><strong>Amount:</strong> {tradeResult.amountText} {priceById[tradeResult.trade.coinId]?.symbol?.toUpperCase() || ''}</div>
-              ) : null}
-              {tradeResult.outcome === 'Profit' && (
-                <div>
-                  <strong>Profit:</strong> {tradeResult.profitAmountText} {priceById[tradeResult.trade.coinId]?.symbol?.toUpperCase() || ''}
+            <div
+              style={{
+                background: '#fff',
+                padding: '20px 24px 24px',
+                borderRadius: 18,
+                width: 380,
+                maxWidth: '95vw',
+                boxShadow: '0 20px 60px rgba(0, 0, 0, 0.18)',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: 14, borderBottom: '1px solid #eef1f6' }}>
+                <span style={{ fontSize: 17, fontWeight: 700, color: '#111827' }}>{pairLabel} Delivery</span>
+                <button
+                  type="button"
+                  onClick={closeTradeResult}
+                  aria-label="Close"
+                  title="Close"
+                  style={{ border: 'none', background: 'transparent', color: '#6b7280', cursor: 'pointer', fontSize: 20, lineHeight: 1, padding: 4 }}
+                >
+                  ×
+                </button>
+              </div>
+
+              <div style={{ textAlign: 'center', padding: '26px 0' }}>
+                <div style={{ fontSize: 22, fontWeight: 700, color: plColor }}>P/L {plText}</div>
+              </div>
+
+              <div style={{ borderTop: '1px solid #eef1f6', borderBottom: '1px solid #eef1f6' }}>
+                {row('Purchase price', trade.purchasePrice != null ? usd(trade.purchasePrice) : '—')}
+                {row('Settlement price', tradeResult.settlementPrice != null ? usd(tradeResult.settlementPrice) : '—')}
+                {row('Direction', tradeResult.directionLabel)}
+                {row('Amount', `${trade.amount ?? '—'} USDT`)}
+                {row('Delivery time', `${trade.deliveryTime ?? 0}s`)}
+              </div>
+
+              <div style={{ paddingTop: 14, paddingBottom: 18 }}>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', color: '#9ca3af', marginBottom: 4 }}>
+                  OPENED
                 </div>
-              )}
-              <div style={{ marginTop: 8, color: tradeResult.outcome === 'Profit' ? '#16a34a' : '#dc2626', fontWeight: 600 }}>
-                {tradeResult.message}
+                <div style={{ fontSize: 14.5, fontWeight: 700, color: '#111827' }}>
+                  {openedDate} - {openedTime}
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 12 }}>
+                <button
+                  type="button"
+                  onClick={closeTradeResult}
+                  style={{
+                    flex: 1,
+                    padding: '12px 0',
+                    borderRadius: 10,
+                    border: '1px solid #e5e7eb',
+                    background: '#fff',
+                    color: '#374151',
+                    fontWeight: 700,
+                    fontSize: 14.5,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Close
+                </button>
+                <button
+                  type="button"
+                  onClick={continueTrade}
+                  style={{
+                    flex: 1,
+                    padding: '12px 0',
+                    borderRadius: 10,
+                    border: 'none',
+                    background: '#2563eb',
+                    color: '#fff',
+                    fontWeight: 700,
+                    fontSize: 14.5,
+                    cursor: 'pointer',
+                  }}
+                >
+                  Continue
+                </button>
               </div>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'center', gap: 12, marginTop: 20 }}>
-              <button className="btn btn-sm" onClick={closeTradeResult}>
-                Close
-              </button>
-              <button className="btn btn-sm btn-primary" onClick={continueTrade}>
-                Continue
-              </button>
-            </div>
           </div>
-        </div>
-      )}
+        )
+      })()}
 
       <div className="page-head">
         <div className="eyebrow">Portfolio</div>
@@ -484,9 +560,9 @@ export default function Trade() {
                 </option>
               ))}
             </select>
-            {side === 'sell' && sellableCoins.length === 0 && (
+            {side === 'sell' && !usdtHolding && (
               <div className="muted" style={{ fontSize: 13, marginTop: 6 }}>
-                You don't hold any coins yet — buy something first.
+                You don't hold any USDT yet — buy something first.
               </div>
             )}
           </div>
@@ -494,7 +570,7 @@ export default function Trade() {
           {coin && (
             <div className="muted" style={{ fontSize: 13, marginBottom: 12 }}>
               Live price: {usd(livePrice)}
-              {side === 'sell' && heldHolding && <> · You hold {num(heldHolding.amount)} {coin.symbol.toUpperCase()}</>}
+              {side === 'sell' && usdtHolding && <> · You hold {num(usdtHolding.amount)} USDT</>}
             </div>
           )}
 
@@ -604,7 +680,9 @@ export default function Trade() {
               {chartStatus === 'ready' && chart.length < 2 && (
                 <div className="alert alert-info">Not enough data points at this range yet.</div>
               )}
-              {chartStatus === 'ready' && chart.length >= 2 && <CandleChart data={chart} />}
+              {chartStatus === 'ready' && chart.length >= 2 && (
+                <CandleChart data={chart} symbol={`${coin.symbol.toUpperCase()}/USDT`} intervalLabel={range.label} />
+              )}
             </>
           )}
         </div>

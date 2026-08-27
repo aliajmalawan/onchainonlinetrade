@@ -62,14 +62,12 @@ export const apiConvert = (payload) => request('/convert.php', { method: 'POST',
 export const apiGetWithdrawHistory = () => request('/withdraw_history.php').then((d) => d.withdraws)
 export const apiSubmitWithdrawRequest = (payload) => request('/withdraw_request.php', { method: 'POST', body: payload })
 export const apiGetDepositHistory = () => request('/deposit_history.php').then((d) => d.deposits)
-export async function apiSubmitDepositRequest({ currency, network, amount, txId, proofFile }) {
+export async function apiSubmitDepositRequest({ currency, network, proofFile }) {
   const ROOT = (import.meta.env.VITE_BACKEND_URL || '/api').replace(/\/api$/, '')
   const url = ROOT + '/api/deposit_request.php'
   const fd = new FormData()
   fd.append('currency', currency)
   fd.append('network', network)
-  fd.append('amount', amount)
-  fd.append('txId', txId)
   if (proofFile) fd.append('proof', proofFile)
 
   const headers = {}
@@ -113,10 +111,10 @@ export const apiAdminUpdateWithdrawStatus = (withdrawId, status, txId = null, fe
     body: { withdrawId, status, txId, fee },
   }).then((d) => d.withdraw)
 export const apiAdminGetDepositRequests = () => request('/admin/deposit_requests.php').then((d) => d.deposits)
-export const apiAdminUpdateDepositStatus = (depositId, status, txId = null) =>
+export const apiAdminUpdateDepositStatus = (depositId, status, txId = null, amount = null) =>
   request('/admin/update_deposit_status.php', {
     method: 'POST',
-    body: { depositId, status, txId },
+    body: { depositId, status, txId, amount },
   }).then((d) => d.deposit)
 export const apiAdminGetDepositAddresses = () => request('/admin/deposit_addresses.php').then((d) => d.addresses)
 export const apiAdminAddDepositAddress = (currency, network, address) =>

@@ -9,9 +9,13 @@ $b = body();
 $depositId = isset($b['depositId']) ? (int) $b['depositId'] : 0;
 $status = trim($b['status'] ?? '');
 $txId = trim($b['txId'] ?? '');
+// The user no longer submits an amount — the admin sets it here (from the
+// transaction screenshot) before/while marking the request completed.
+$amount = isset($b['amount']) && $b['amount'] !== '' ? (float) $b['amount'] : null;
 
 if ($depositId <= 0) json_err('depositId is required.', 400);
 if (!in_array($status, ['pending', 'completed', 'failed'], true)) json_err('Invalid status.', 400);
+if ($amount !== null && $amount < 0) json_err('Amount cannot be negative.', 400);
 
 $stmt = db()->prepare('SELECT * FROM deposit_requests WHERE id = ?');
 $stmt->execute([$depositId]);
@@ -21,12 +25,20 @@ if (!$deposit) json_err('Deposit request not found.', 404);
 // Only credit holdings the moment a request first becomes completed —
 // never on a later re-save, so re-selecting "completed" can't double-credit.
 $newlyCompleted = $status === 'completed' && $deposit['status'] !== 'completed';
+if ($newlyCompleted && ($amount ?? (float) $deposit['amount']) <= 0) {
+    json_err('Enter the deposit amount before marking this request completed.', 400);
+}
 
 $fields = ['status = ?'];
 $params = [$status];
 if ($txId !== '') {
     $fields[] = 'tx_id = ?';
     $params[] = $txId;
+}
+if ($amount !== null) {
+    $fields[] = 'amount = ?';
+    $params[] = $amount;
+    $deposit['amount'] = $amount; // keep the crediting logic below in sync
 }
 $params[] = $depositId;
 

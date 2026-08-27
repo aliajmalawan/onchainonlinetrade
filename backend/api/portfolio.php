@@ -48,13 +48,30 @@ if ($method === 'POST') {
         );
         $row = db()->query('SELECT * FROM holdings WHERE id = ' . $id)->fetch();
     } else {
-        // LOSS (Profit Mode OFF) — the stake is forfeited entirely. No
-        // profit is calculated, the wallet receives nothing, and no units
-        // are credited — the holding is left exactly as it was. Only the
-        // attempt is recorded in trade history, logged with amount = stake.
+        // LOSS (Profit Mode OFF) — the staked amount is actually forfeited
+        // from the wallet: deduct up to $amount from the user's existing
+        // holding for this coin. If the deduction would zero it out (or
+        // there isn't enough to cover it), drop the holding entirely rather
+        // than let it go negative — mirroring the DELETE/sell path below.
         $profitAmount = 0;
         $lossAmount   = $amount;
         $result       = 'Loss';
+
+        $stmt = db()->prepare('SELECT * FROM holdings WHERE user_id = ? AND coin_id = ?');
+        $stmt->execute([$u['id'], $coinId]);
+        $existing = $stmt->fetch();
+
+        if ($existing) {
+            $currentAmount = (float) $existing['amount'];
+            if ($amount < $currentAmount) {
+                db()->prepare('UPDATE holdings SET amount = ? WHERE id = ?')
+                    ->execute([$currentAmount - $amount, $existing['id']]);
+            } else {
+                db()->prepare('DELETE FROM holdings WHERE id = ? AND user_id = ?')
+                    ->execute([$existing['id'], $u['id']]);
+            }
+        }
+
         log_trade(
             (int) $u['id'], 'add', $coinId, $symbol, $name, $amount, $buyPrice,
             'buy', $duration, $conditionPct, $profitAmount, $lossAmount, $openingPrice, $result
