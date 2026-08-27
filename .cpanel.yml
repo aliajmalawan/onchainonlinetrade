@@ -36,6 +36,17 @@ deployment:
     - export DEPLOYPATH=$HOME/public_html
 
     # --- Frontend -------------------------------------------------------
+    # Remove the previous build's index.html and hashed assets/ first: `cp`
+    # overwrites an existing file by opening+truncating it, which needs
+    # write permission on that specific file — if a prior deploy (or a
+    # manual File Manager edit) ever left index.html owned/permissioned
+    # differently, `cp` silently fails on just that one file while still
+    # succeeding on brand-new filenames elsewhere, leaving the live site
+    # stuck on a stale index.html forever. Deleting first only needs write
+    # permission on the directory, sidestepping that entirely, and also
+    # stops old content-hashed JS/CSS files from accumulating forever.
+    - /bin/rm -rf $DEPLOYPATH/assets
+    - /bin/rm -f $DEPLOYPATH/index.html
     - /bin/cp -R dist/. $DEPLOYPATH/
 
     # --- Backend ----------------------------------------------------------
