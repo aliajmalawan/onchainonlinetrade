@@ -427,12 +427,11 @@ h1, h2, h3, h4 {
 .coin-tab.active { color: var(--text); border-bottom-color: var(--teal); }
 
 /* --- Live coin ticker list (Dashboard) ------------------------------ */
-/* Same fixed-dark-card look as .wallet-summary-card above it — prices are
-   pushed in from a live Binance poll and each row flashes briefly via the
-   inline `background` style transitioning back to transparent. */
+/* Matches the page's own background (no card/border of its own) — prices
+   are pushed in from a live Binance poll and each row flashes briefly via
+   the inline `background` style transitioning back to transparent. */
 .ticker-list {
-  background: var(--dark-ink);
-  border: 1px solid var(--dark-line);
+  background: var(--ink);
   border-radius: var(--radius);
   overflow: hidden;
 }
@@ -444,25 +443,25 @@ h1, h2, h3, h4 {
   text-decoration: none;
   color: inherit;
   transition: background 500ms ease-out;
-  border-bottom: 1px solid var(--dark-line);
+  border-bottom: 1px solid var(--line);
 }
 .ticker-row:last-child { border-bottom: none; }
-.ticker-row:hover { background: rgba(255, 255, 255, 0.04); text-decoration: none; }
+.ticker-row:hover { background: var(--panel-2); text-decoration: none; }
 .ticker-icon { width: 34px; height: 34px; border-radius: 50%; flex: 0 0 auto; }
 .ticker-main { flex: 1 1 auto; min-width: 0; }
 .ticker-name-row { display: flex; align-items: center; gap: 8px; }
-.ticker-name { color: var(--dark-text); font-weight: 700; font-size: 15px; }
+.ticker-name { color: var(--text); font-weight: 700; font-size: 15px; }
 .ticker-badge {
   font-size: 10.5px;
   font-weight: 700;
-  color: var(--dark-muted);
-  background: rgba(255, 255, 255, 0.06);
+  color: var(--muted);
+  background: var(--panel-2);
   border-radius: 5px;
   padding: 2px 6px;
 }
-.ticker-sub { color: var(--dark-muted); font-size: 12.5px; margin-top: 3px; font-family: var(--font-mono); }
+.ticker-sub { color: var(--muted); font-size: 12.5px; margin-top: 3px; font-family: var(--font-mono); }
 .ticker-right { text-align: right; flex: 0 0 auto; }
-.ticker-price { color: var(--dark-text); font-weight: 700; font-size: 15.5px; font-family: var(--font-mono); }
+.ticker-price { color: var(--text); font-weight: 700; font-size: 15.5px; font-family: var(--font-mono); }
 .ticker-pct {
   display: inline-flex;
   align-items: center;
@@ -1194,10 +1193,9 @@ table.data tr:hover td { background: rgba(255, 255, 255, 0.015); }
 .kyc-entry-info { flex: 0 0 auto; width: 100%; }
 .kyc-entry-images img { width: 96px; height: 96px; }
 
-/* These are compact toggle-button groups, not stacked form fields — keep
-   them horizontal even though .row is a column above. */
-.trade-duration-panel .trade-side-buttons,
-.trade-chart-panel .chart-range-row {
+/* This is a compact toggle-button group, not a stacked form field — keep
+   it horizontal even though .row is a column above. */
+.trade-duration-panel .trade-side-buttons {
   flex-direction: row;
   flex-wrap: wrap;
 }
