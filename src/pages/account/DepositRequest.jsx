@@ -15,6 +15,7 @@ export default function DepositRequest() {
   const [formError, setFormError] = useState('')
   const [showSuccessPopup, setShowSuccessPopup] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [addressCopied, setAddressCopied] = useState(false)
 
   useEffect(() => {
     apiGetDepositAddresses().then(setAddresses).catch(() => setAddresses([]))
@@ -52,6 +53,30 @@ export default function DepositRequest() {
       delete next[field]
       return next
     })
+  }
+
+  async function copyAddress() {
+    if (!depositAddress) return
+    try {
+      await navigator.clipboard.writeText(depositAddress)
+    } catch {
+      // Clipboard API unavailable (e.g. non-secure context) — fall back to
+      // the classic hidden-textarea + execCommand trick.
+      const textarea = document.createElement('textarea')
+      textarea.value = depositAddress
+      textarea.style.position = 'fixed'
+      textarea.style.opacity = '0'
+      document.body.appendChild(textarea)
+      textarea.select()
+      try {
+        document.execCommand('copy')
+      } catch {
+        /* nothing more we can do */
+      }
+      document.body.removeChild(textarea)
+    }
+    setAddressCopied(true)
+    setTimeout(() => setAddressCopied(false), 1500)
   }
 
   function validate() {
@@ -140,8 +165,58 @@ export default function DepositRequest() {
 
             <div className="field">
               <label>Deposit Address</label>
-              <div className="input mono" style={{ paddingTop: 12, paddingBottom: 12, minHeight: 46, wordBreak: 'break-all' }}>
-                {depositAddress || '—'}
+              <div
+                className="input mono"
+                style={{
+                  paddingTop: 12,
+                  paddingBottom: 12,
+                  minHeight: 46,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 10,
+                }}
+              >
+                <span style={{ flex: 1, wordBreak: 'break-all' }}>{depositAddress || '—'}</span>
+                {depositAddress && (
+                  <button
+                    type="button"
+                    onClick={copyAddress}
+                    aria-label="Copy deposit address"
+                    title="Copy address"
+                    style={{
+                      flex: '0 0 auto',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: 5,
+                      border: '1px solid var(--line)',
+                      background: addressCopied ? 'var(--teal)' : 'var(--panel-2)',
+                      color: addressCopied ? '#fff' : 'var(--text)',
+                      borderRadius: 6,
+                      padding: '5px 9px',
+                      fontSize: 12,
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    {addressCopied ? (
+                      <>
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                        Copied
+                      </>
+                    ) : (
+                      <>
+                        <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <rect x="9" y="9" width="13" height="13" rx="2" />
+                          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                        </svg>
+                        Copy
+                      </>
+                    )}
+                  </button>
+                )}
               </div>
               <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
                 Send {currency} ({network}) to this address only.
