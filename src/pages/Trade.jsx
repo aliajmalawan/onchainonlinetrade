@@ -4,7 +4,7 @@ import { getMarkets, getBinancePrice } from '../lib/api'
 import { apiGetPortfolio } from '../lib/backend'
 import TradingViewChart from '../components/TradingViewChart'
 import { usd, num } from '../lib/format'
-import { getProfitPercentage, updateWallet, settleWinningTrade, settleLosingTrade } from '../lib/trading'
+import { getProfitPercentage, calculateProfit, updateWallet, settleWinningTrade, settleLosingTrade } from '../lib/trading'
 
 export default function Trade() {
   const { user, refreshUser } = useAuth()
@@ -276,7 +276,11 @@ export default function Trade() {
   // require owning the referenced coin, only enough USDT margin (checked
   // separately), since every trade settles in USDT regardless of pair.
   const coinList = coins
-  const estTotal = livePrice != null && amount ? livePrice * parseFloat(amount) : null
+  // Amount is always staked in USDT now, so what's actually useful here is
+  // the profit this trade would earn at the selected duration's fixed
+  // percentage (e.g. 100 @ 30s's 10% -> 10), not a coin-quantity total.
+  const amt = parseFloat(amount)
+  const estProfit = amount && !Number.isNaN(amt) ? calculateProfit(amt, duration) : null
 
   return (
     <div>
@@ -587,9 +591,10 @@ export default function Trade() {
               <div className="muted" style={{ fontSize: 12, marginTop: 6 }}>Minimum amount: 100</div>
             </div>
 
-            {estTotal != null && (
+            {estProfit != null && (
               <div className="muted" style={{ fontSize: 13 }}>
-                Estimated total: {usd(estTotal)}
+                Estimated Profit: {num(estProfit)} USDT
+                <div>Est. returns +{(getProfitPercentage(duration) * 100).toFixed(2)}%</div>
               </div>
             )}
 
