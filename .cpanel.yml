@@ -53,6 +53,14 @@ deployment:
     - /bin/cp backend/helpers.php backend/db.php $DEPLOYPATH/
     - /bin/mkdir -p $DEPLOYPATH/api
     - /bin/cp -R backend/api/. $DEPLOYPATH/api/
+    # backend/.htaccess makes Apache pass the Authorization header through
+    # to PHP (shared hosting strips it otherwise, since it's not a standard
+    # CGI var) — it lives next to backend/api/, not inside it, so the copy
+    # above never picks it up. Without it every Bearer-token request 401s
+    # even with a freshly issued, valid token: bearer_token() just never
+    # sees the header. It has to land inside api/ specifically since that's
+    # where the *.php endpoints that check it are actually served from.
+    - /bin/cp backend/.htaccess $DEPLOYPATH/api/.htaccess
     - /bin/mkdir -p $DEPLOYPATH/uploads
     - /bin/cp -R backend/uploads/. $DEPLOYPATH/uploads/
 
