@@ -102,6 +102,60 @@ export async function getBinancePrice(symbol) {
   return parseFloat(data.price)
 }
 
+// Real minute-level candles for the trade page's own chart — CoinGecko's
+// free tier only snapshots every ~5 minutes, so it can't serve 1m/5m
+// windows; Binance's public klines endpoint needs no API key and allows
+// cross-origin requests, so it's used just for these short ranges.
+export const SHORT_CHART_RANGES = [
+  { label: '1m', interval: '1m', limit: 60 },
+  { label: '5m', interval: '5m', limit: 60 },
+  { label: '15m', interval: '15m', limit: 60 },
+  { label: '1h', interval: '1h', limit: 48 },
+]
+
+// symbol: a coin's ticker (e.g. "btc") — paired against USDT on Binance.
+export async function getBinanceKlines(symbol, interval, limit = 60) {
+  const path = `${BINANCE_BASE}/klines?symbol=${symbol.toUpperCase()}USDT&interval=${interval}&limit=${limit}`
+  const res = await fetch(path)
+  const data = await res.json().catch(() => null)
+
+  if (!res.ok || !Array.isArray(data)) {
+    if (data?.code === -1121) {
+      throw new Error(`${symbol.toUpperCase()} isn't traded against USDT on Binance`) // fallback handled by caller
+    }
+    throw new Error(data?.msg || `Binance request failed (${res.status}).`)
+  }
+  // [openTime, open, high, low, close, volume, closeTime, ...]
+  return data.map((k) => ({
+    t: k[6],
+    open: parseFloat(k[1]),
+    high: parseFloat(k[2]),
+    low: parseFloat(k[3]),
+    close: parseFloat(k[4]),
+    volume: parseFloat(k[5]),
+  }))
+}
+
+export async function getCoinChart(coin, interval, limit = 60) {
+  try {
+    return await getBinanceKlines(coin.symbol, interval, limit)
+  } catch (err) {
+    if (coin?.id) {
+      try {
+        const market = await getMarketChart(coin.id, 1)
+        if (Array.isArray(market?.prices) && market.prices.length) {
+          // CoinGecko's market_chart endpoint only gives a single price per
+          // point (no OHLC) — degrade to flat candles rather than fail.
+          return market.prices.slice(-limit).map((p) => ({ t: p[0], open: p[1], high: p[1], low: p[1], close: p[1], volume: 0 }))
+        }
+      } catch (fallbackError) {
+        // ignore fallback failure and continue with original error below
+      }
+    }
+    throw new Error(`Chart unavailable for ${coin?.symbol?.toUpperCase() || 'this coin'}. ${err.message}`)
+  }
+}
+
 // Live 24hr stats (price, % change, high, volume) for a set of coin
 // symbols, paired against USDT — used to make a coin list actually tick in
 // real time, since CoinGecko's markets snapshot (above) only moves every

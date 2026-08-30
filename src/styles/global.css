@@ -1193,9 +1193,10 @@ table.data tr:hover td { background: rgba(255, 255, 255, 0.015); }
 .kyc-entry-info { flex: 0 0 auto; width: 100%; }
 .kyc-entry-images img { width: 96px; height: 96px; }
 
-/* This is a compact toggle-button group, not a stacked form field — keep
-   it horizontal even though .row is a column above. */
-.trade-duration-panel .trade-side-buttons {
+/* These are compact toggle-button groups, not stacked form fields — keep
+   them horizontal even though .row is a column above. */
+.trade-duration-panel .trade-side-buttons,
+.trade-chart-panel .chart-range-row {
   flex-direction: row;
   flex-wrap: wrap;
 }

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../context/AuthContext'
-import { getMarkets, getBinancePrice } from '../lib/api'
+import { getMarkets, getCoinChart, getBinancePrice, SHORT_CHART_RANGES } from '../lib/api'
 import { apiGetPortfolio } from '../lib/backend'
-import TradingViewChart from '../components/TradingViewChart'
+import CandleChart from '../components/CandleChart'
 import { usd, num } from '../lib/format'
 import { getProfitPercentage, calculateProfit, updateWallet, settleWinningTrade, settleLosingTrade } from '../lib/trading'
 
@@ -29,6 +29,10 @@ export default function Trade() {
   const [success, setSuccess] = useState('')
   const [busy, setBusy] = useState(false)
 
+  const [range, setRange] = useState(SHORT_CHART_RANGES[3]) // default: 1h
+  const [chart, setChart] = useState([])
+  const [chartStatus, setChartStatus] = useState('idle')
+  const [chartError, setChartError] = useState('')
   const [duration, setDuration] = useState(30) // trade duration in seconds
   const [tradeTimerActive, setTradeTimerActive] = useState(false)
   const [tradeSecondsLeft, setTradeSecondsLeft] = useState(0)
@@ -119,6 +123,31 @@ export default function Trade() {
 
   const coin = priceById[coinId]
   const livePrice = coin?.current_price ?? null
+
+  // Deliberately keyed on coinId (not the `coin` object) plus whether the
+  // market list has loaded at all — `coins` gets a brand-new array/object
+  // reference every 5s from the live-price poll above, so depending on
+  // `coin` itself would restart this fetch on every single poll tick and
+  // it would never get a clear ~1-2s window to actually finish.
+  useEffect(() => {
+    if (!coin) {
+      setChart([])
+      setChartStatus('idle')
+      return
+    }
+    setChartStatus('loading')
+    setChartError('')
+    getCoinChart(coin, range.interval, range.limit)
+      .then((data) => {
+        setChart(data)
+        setChartStatus('ready')
+      })
+      .catch((err) => {
+        setChartError(err.message)
+        setChartStatus('error')
+      })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coinId, range, coins.length > 0])
 
   function switchSide(next) {
     setSide(next)
@@ -651,9 +680,29 @@ export default function Trade() {
                     <strong>{coin.name}</strong> <span className="sym muted">{coin.symbol.toUpperCase()}</span>
                   </div>
                 </div>
+                <div className="row chart-range-row" style={{ flex: '0 0 auto' }}>
+                  {SHORT_CHART_RANGES.map((r) => (
+                    <button
+                      key={r.label}
+                      className={'btn btn-sm' + (range.label === r.label ? ' btn-primary' : '')}
+                      onClick={() => setRange(r)}
+                    >
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
               </div>
 
-              <TradingViewChart symbol={coin.symbol} />
+              {chartStatus === 'loading' && <div className="loading">Loading chart…</div>}
+              {chartStatus === 'error' && (
+                <div className="alert alert-error">{chartError || "Couldn't load chart data."}</div>
+              )}
+              {chartStatus === 'ready' && chart.length < 2 && (
+                <div className="alert alert-info">Not enough data points at this range yet.</div>
+              )}
+              {chartStatus === 'ready' && chart.length >= 2 && (
+                <CandleChart data={chart} symbol={`${coin.symbol.toUpperCase()}/USDT`} intervalLabel={range.label} />
+              )}
             </>
           )}
         </div>
