@@ -6,16 +6,18 @@ import CandleChart from '../components/CandleChart'
 import { usd, num } from '../lib/format'
 import { getProfitPercentage, calculateProfit, updateWallet, settleWinningTrade, settleLosingTrade } from '../lib/trading'
 
-// Sell Short frames itself as "betting the price falls" — a live price that
-// drifts ABOVE the purchase price during/after the trade reads as
-// contradictory, even though the actual Profit/Loss outcome is decided
-// separately (by admin profit mode), not by real price movement. Mirror the
-// raw tick's distance from the purchase price downward so a short's shown
-// price never rises above where it opened, while still moving tick to tick
-// with the real market's volatility.
+// Buy Long frames itself as "betting the price rises" and Sell Short as
+// "betting it falls" — a live price that drifts the wrong way during/after
+// the trade reads as contradictory, even though the actual Profit/Loss
+// outcome is decided separately (by admin profit mode), not by real price
+// movement. Mirror the raw tick's distance from the purchase price toward
+// each direction's favorable side, so a Buy Long's shown price never dips
+// below where it opened and a Sell Short's never rises above it — while
+// still moving tick to tick with the real market's volatility.
 function displayPriceForDirection(side, purchasePrice, rawPrice) {
-  if (side !== 'sell' || purchasePrice == null || rawPrice == null) return rawPrice
-  return purchasePrice - Math.abs(rawPrice - purchasePrice)
+  if (purchasePrice == null || rawPrice == null) return rawPrice
+  const diff = Math.abs(rawPrice - purchasePrice)
+  return side === 'sell' ? purchasePrice - diff : purchasePrice + diff
 }
 
 export default function Trade() {
@@ -152,7 +154,9 @@ export default function Trade() {
   function switchSide(next) {
     setSide(next)
     setCoinId((prev) => prev || 'bitcoin')
-    setAmount('')
+    // Amount deliberately stays as-is — this first click only "arms" the
+    // side (a second click actually places the trade), so clearing it here
+    // just made the user re-type what they'd already entered.
     setError('')
     setSuccess('')
   }
@@ -232,7 +236,6 @@ export default function Trade() {
   function closeTradeResult() {
     setTradeResult(null)
     setTradeResultOpen(false)
-    setAmount('')
   }
 
   function cancelTrade() {
@@ -280,7 +283,8 @@ export default function Trade() {
           ? `Bought Long ${num(amt)} USDT on ${coinToUse.symbol.toUpperCase()}/USDT at ${usd(execPrice)}.`
           : `Sold Short ${num(amt)} USDT on ${coinToUse.symbol.toUpperCase()}/USDT at ${usd(execPrice)}.`
       )
-      setAmount('')
+      // Amount deliberately stays as-is — placing another trade at the same
+      // stake shouldn't require re-typing it every time.
       refreshHoldings()
       return response
     } catch (err) {
