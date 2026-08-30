@@ -112,7 +112,10 @@ export async function getBinancePrice(symbol) {
 // gainers/losers list full of volatile small-caps. A per-symbol request
 // lets the rest still update live when one coin's pair doesn't exist.
 export async function getBinance24hrTickers(symbols) {
-  const unique = [...new Set(symbols.map((s) => s.toUpperCase()))]
+  // USDT/USDT isn't a real trading pair — Tether's own row always shows
+  // CoinGecko's ~$1 price instead, so skip a request that's guaranteed to
+  // 400 rather than firing it and catching the failure every single poll.
+  const unique = [...new Set(symbols.map((s) => s.toUpperCase()))].filter((s) => s !== 'USDT')
   const results = await Promise.allSettled(
     unique.map((symbol) =>
       fetch(`${BINANCE_BASE}/ticker/24hr?symbol=${symbol}USDT`)
