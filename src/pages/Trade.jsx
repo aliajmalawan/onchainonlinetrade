@@ -677,26 +677,6 @@ export default function Trade() {
 
           {coin && (
             <>
-              <div className="spread" style={{ marginBottom: 14 }}>
-                <div className="coin-cell">
-                  <img src={coin.image} alt="" style={{ width: 26, height: 26 }} />
-                  <div>
-                    <strong>{coin.name}</strong> <span className="sym muted">{coin.symbol.toUpperCase()}</span>
-                  </div>
-                </div>
-                <div className="row chart-range-row" style={{ flex: '0 0 auto' }}>
-                  {SHORT_CHART_RANGES.map((r) => (
-                    <button
-                      key={r.label}
-                      className={'btn btn-sm' + (range.label === r.label ? ' btn-primary' : '')}
-                      onClick={() => setRange(r)}
-                    >
-                      {r.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
               {chartStatus === 'loading' && <div className="loading">Loading chart…</div>}
               {chartStatus === 'error' && (
                 <div className="alert alert-error">{chartError || "Couldn't load chart data."}</div>
@@ -705,7 +685,15 @@ export default function Trade() {
                 <div className="alert alert-info">Not enough data points at this range yet.</div>
               )}
               {chartStatus === 'ready' && chart.length >= 2 && (
-                <CandleChart data={chart} symbol={`${coin.symbol.toUpperCase()}/USDT`} intervalLabel={range.label} />
+                <CandleChart
+                  data={chart}
+                  coins={coins}
+                  coinId={coinId}
+                  onSelectCoin={setCoinId}
+                  ranges={SHORT_CHART_RANGES}
+                  activeRange={range}
+                  onSelectRange={setRange}
+                />
               )}
             </>
           )}
