@@ -11,10 +11,14 @@ export function AuthProvider({ children }) {
 
   // Restore session on first load (validates the stored token against the API).
   useEffect(() => {
-    apiMe().then((found) => {
-      setUser(found)
-      setReady(true)
-    })
+    apiMe()
+      .then((found) => setUser(found))
+      .catch((err) => {
+        // Only a confirmed 401 means the token is genuinely invalid — a
+        // network blip, 500, or CORS hiccup shouldn't clear it.
+        if (err?.status === 401) localStorage.removeItem('ct.token')
+      })
+      .finally(() => setReady(true))
   }, [])
 
   async function login(email, password) {
@@ -59,9 +63,16 @@ export function AuthProvider({ children }) {
       const found = await apiMe()
       setUser(found)
       return found
-    } catch {
-      setUser(null)
-      return null
+    } catch (err) {
+      // Only a confirmed 401 means the session is genuinely gone — anything
+      // else (network blip, 500, CORS hiccup) shouldn't log out a page that
+      // re-validates on every visit (Trade) over a single failed re-check.
+      if (err?.status === 401) {
+        localStorage.removeItem('ct.token')
+        setUser(null)
+        return null
+      }
+      return user
     }
   }
 
@@ -71,8 +82,11 @@ export function AuthProvider({ children }) {
     localStorage.setItem('ct.token', adminToken)
     localStorage.removeItem(ADMIN_TOKEN_KEY)
     setImpersonating(false)
-    const found = await apiMe()
-    setUser(found)
+    try {
+      setUser(await apiMe())
+    } catch (err) {
+      if (err?.status === 401) localStorage.removeItem('ct.token')
+    }
   }
 
   const value = {

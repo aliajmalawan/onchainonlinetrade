@@ -19,7 +19,11 @@ async function request(path, { method = 'GET', body } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   })
   const data = await res.json().catch(() => ({}))
-  if (!res.ok) throw new Error(data.error || 'Request failed')
+  if (!res.ok) {
+    const err = new Error(data.error || 'Request failed')
+    err.status = res.status
+    throw err
+  }
   return data
 }
 
@@ -42,15 +46,14 @@ export async function apiLogout() {
   }
 }
 
+// Throws on failure (with .status attached) instead of swallowing it — a
+// network blip, a 500, or a CORS hiccup is not the same thing as "this
+// token is invalid," and callers need to tell those apart so a transient
+// failure can't force a real session into looking logged out.
 export async function apiMe() {
   if (!token()) return null
-  try {
-    const { user } = await request('/me.php')
-    return user
-  } catch {
-    localStorage.removeItem('ct.token')
-    return null
-  }
+  const { user } = await request('/me.php')
+  return user
 }
 
 // --- Portfolio ---

@@ -6,6 +6,18 @@ import TradingViewChart from '../components/TradingViewChart'
 import { usd, num } from '../lib/format'
 import { getProfitPercentage, calculateProfit, updateWallet, settleWinningTrade, settleLosingTrade } from '../lib/trading'
 
+// Sell Short frames itself as "betting the price falls" — a live price that
+// drifts ABOVE the purchase price during/after the trade reads as
+// contradictory, even though the actual Profit/Loss outcome is decided
+// separately (by admin profit mode), not by real price movement. Mirror the
+// raw tick's distance from the purchase price downward so a short's shown
+// price never rises above where it opened, while still moving tick to tick
+// with the real market's volatility.
+function displayPriceForDirection(side, purchasePrice, rawPrice) {
+  if (side !== 'sell' || purchasePrice == null || rawPrice == null) return rawPrice
+  return purchasePrice - Math.abs(rawPrice - purchasePrice)
+}
+
 export default function Trade() {
   const { user, refreshUser } = useAuth()
   const [side, setSide] = useState('buy') // 'buy' | 'sell'
@@ -253,7 +265,8 @@ export default function Trade() {
     if (!tradeTimerActive) return
     if (tradeSecondsLeft <= 0) {
       const completedTrade = pendingTrade
-      const settlementPrice = tradeLivePrice ?? priceById[completedTrade?.coinId]?.current_price ?? null
+      const rawSettlementPrice = tradeLivePrice ?? priceById[completedTrade?.coinId]?.current_price ?? null
+      const settlementPrice = displayPriceForDirection(completedTrade?.side, completedTrade?.purchasePrice, rawSettlementPrice)
       setTradeTimerActive(false)
       setPendingTrade(null)
       if (completedTrade) {
@@ -289,8 +302,9 @@ export default function Trade() {
         const pairLabel = `${deliveryCoin?.symbol?.toUpperCase() ?? ''}/USDT`
         const isBuy = pendingTrade.side === 'buy'
         const directionColor = isBuy ? '#16a34a' : '#dc2626'
-        const currentPrice = tradeLivePrice != null ? tradeLivePrice : deliveryCoin?.current_price ?? null
         const purchasePrice = pendingTrade.purchasePrice
+        const rawCurrentPrice = tradeLivePrice != null ? tradeLivePrice : deliveryCoin?.current_price ?? null
+        const currentPrice = displayPriceForDirection(pendingTrade.side, purchasePrice, rawCurrentPrice)
         let currentColor = '#111827'
         if (currentPrice != null && purchasePrice != null) {
           const favorable = isBuy ? currentPrice >= purchasePrice : currentPrice <= purchasePrice
