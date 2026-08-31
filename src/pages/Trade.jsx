@@ -6,18 +6,22 @@ import CandleChart from '../components/CandleChart'
 import { usd, num } from '../lib/format'
 import { getProfitPercentage, calculateProfit, updateWallet, settleWinningTrade, settleLosingTrade } from '../lib/trading'
 
-// Buy Long frames itself as "betting the price rises" and Sell Short as
-// "betting it falls" — a live price that drifts the wrong way during/after
-// the trade reads as contradictory, even though the actual Profit/Loss
-// outcome is decided separately (by admin profit mode), not by real price
-// movement. Mirror the raw tick's distance from the purchase price toward
-// each direction's favorable side, so a Buy Long's shown price never dips
-// below where it opened and a Sell Short's never rises above it — while
-// still moving tick to tick with the real market's volatility.
-function displayPriceForDirection(side, purchasePrice, rawPrice) {
+// The shown price has to agree with the trade's actual outcome, not just
+// its direction — a Buy Long that's going to LOSE but still shows the
+// price climbing (or a Sell Short that WINS while the price visibly rises)
+// reads as an obvious contradiction. The outcome itself is decided by the
+// account's profit-mode flag (known upfront, before the trade even starts,
+// same source the backend settles from), so that — not just buy/sell — is
+// what decides which way the displayed price is allowed to move: up when
+// the direction is winning, down when it's losing. Mirrors the raw tick's
+// distance from the purchase price toward whichever side that is, so it
+// still moves tick to tick with the real market's volatility.
+function displayPriceForDirection(side, willProfit, purchasePrice, rawPrice) {
   if (purchasePrice == null || rawPrice == null) return rawPrice
   const diff = Math.abs(rawPrice - purchasePrice)
-  return side === 'sell' ? purchasePrice - diff : purchasePrice + diff
+  const isBuy = side === 'buy'
+  const showUp = willProfit ? isBuy : !isBuy
+  return showUp ? purchasePrice + diff : purchasePrice - diff
 }
 
 export default function Trade() {
@@ -299,7 +303,12 @@ export default function Trade() {
     if (tradeSecondsLeft <= 0) {
       const completedTrade = pendingTrade
       const rawSettlementPrice = tradeLivePrice ?? priceById[completedTrade?.coinId]?.current_price ?? null
-      const settlementPrice = displayPriceForDirection(completedTrade?.side, completedTrade?.purchasePrice, rawSettlementPrice)
+      const settlementPrice = displayPriceForDirection(
+        completedTrade?.side,
+        !!user?.profitMode,
+        completedTrade?.purchasePrice,
+        rawSettlementPrice
+      )
       setTradeTimerActive(false)
       setPendingTrade(null)
       if (completedTrade) {
@@ -337,7 +346,7 @@ export default function Trade() {
         const directionColor = isBuy ? '#16a34a' : '#dc2626'
         const purchasePrice = pendingTrade.purchasePrice
         const rawCurrentPrice = tradeLivePrice != null ? tradeLivePrice : deliveryCoin?.current_price ?? null
-        const currentPrice = displayPriceForDirection(pendingTrade.side, purchasePrice, rawCurrentPrice)
+        const currentPrice = displayPriceForDirection(pendingTrade.side, !!user?.profitMode, purchasePrice, rawCurrentPrice)
         let currentColor = '#111827'
         if (currentPrice != null && purchasePrice != null) {
           const favorable = isBuy ? currentPrice >= purchasePrice : currentPrice <= purchasePrice
