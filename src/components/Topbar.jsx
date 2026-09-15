@@ -6,6 +6,7 @@ import {
   apiGetWithdrawHistory,
   apiGetNotifications,
   apiAdminGetWithdrawRequests,
+  apiAdminGetTrades,
   apiMarkNotificationRead,
 } from '../lib/backend'
 import { num } from '../lib/format'
@@ -22,6 +23,7 @@ export default function Topbar() {
   const [loadingTrades, setLoadingTrades] = useState(true)
   const [loadingWithdraws, setLoadingWithdraws] = useState(true)
   const [adminWithdrawRequests, setAdminWithdrawRequests] = useState(null)
+  const [adminTrades, setAdminTrades] = useState(null)
   const [lastReadAt, setLastReadAt] = useState(0)
   const rootRef = useRef(null)
   const navigate = useNavigate()
@@ -86,7 +88,9 @@ export default function Topbar() {
       .finally(() => setLoadingWithdraws(false))
   }, [isAdmin])
 
-  // Admin: notification feed is just incoming withdrawal requests from users.
+  // Admin: notification feed is incoming withdrawal requests plus every
+  // user's trades (Buy Long/Sell Short — who placed it, how much, and
+  // whether it settled as a Profit or a Loss).
   useEffect(() => {
     if (!isAdmin) return
     let mounted = true
@@ -98,6 +102,28 @@ export default function Topbar() {
         if (mounted) setAdminWithdrawRequests(rows)
       } catch {
         if (mounted) setAdminWithdrawRequests([])
+      }
+    }
+
+    load()
+    const id = setInterval(load, POLL_MS)
+    return () => {
+      mounted = false
+      clearInterval(id)
+    }
+  }, [isAdmin])
+
+  useEffect(() => {
+    if (!isAdmin) return
+    let mounted = true
+    const POLL_MS = 5000
+
+    async function load() {
+      try {
+        const rows = await apiAdminGetTrades()
+        if (mounted) setAdminTrades(rows)
+      } catch {
+        if (mounted) setAdminTrades([])
       }
     }
 
@@ -175,22 +201,36 @@ export default function Topbar() {
     to: '/account/notifications',
   }))
 
+  // Only genuine timed trades (Buy Long/Sell Short) carry a direction and a
+  // settled result — plain holding operations (like a deposit credit, which
+  // also logs to this same table) have both null and are excluded here.
   const sortedTrades = trades
-    ? [...trades].sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    ? [...trades].filter((t) => t.direction && t.result).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
     : []
-  const tradeNotifications = sortedTrades.slice(0, 3).map((trade) => ({
-    id: `trade-${trade.id}`,
-    label: `${trade.action === 'remove' ? 'Sold' : trade.action === 'add' ? 'Bought' : 'Updated'} ${trade.amount} ${trade.symbol.toUpperCase()} @ $${trade.price.toFixed(2)}`,
-    time: trade.createdAt,
-    displayTime: new Date(trade.createdAt).toLocaleString('en-US', {
-      month: 'short',
-      day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }),
-    action: 'View trade history',
-    to: '/account/history',
-  }))
+  const tradeNotifications = sortedTrades.slice(0, 3).map((trade) => {
+    const isProfit = trade.result === 'Profit'
+    const outcomeAmount = isProfit ? trade.profitAmount : trade.lossAmount
+    const directionLabel = trade.direction === 'buy' ? 'Buy Long' : 'Sell Short'
+    return {
+      id: `trade-${trade.id}`,
+      // No name here, unlike the admin feed's "{userName} placed…" — this
+      // is the account's own notification list, so whose trade it is goes
+      // without saying.
+      label:
+        `Placed a ${directionLabel} trade of ${num(trade.amount)} USDT — ${trade.result}` +
+        (outcomeAmount ? ` (${isProfit ? '+' : '-'}${num(outcomeAmount)} USDT)` : '') +
+        '.',
+      time: trade.createdAt,
+      displayTime: new Date(trade.createdAt).toLocaleString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+      action: 'View trade history',
+      to: '/account/history',
+    }
+  })
 
   const withdrawNotifications = (withdraws ?? [])
     .slice()
@@ -238,22 +278,47 @@ export default function Topbar() {
       to: '/admin/withdrawals',
     }))
 
+  const adminTradeNotifications = (adminTrades ?? [])
+    .slice()
+    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+    .slice(0, 4)
+    .map((t) => {
+      const isProfit = t.result === 'Profit'
+      const outcomeAmount = isProfit ? t.profitAmount : t.lossAmount
+      const directionLabel = t.direction === 'buy' ? 'Buy Long' : 'Sell Short'
+      return {
+        id: `admin-trade-${t.id}`,
+        label:
+          `${t.userName} placed a ${directionLabel} trade of ${num(t.amount)} USDT — ${t.result}` +
+          (outcomeAmount ? ` (${isProfit ? '+' : '-'}${num(outcomeAmount)} USDT)` : '') +
+          '.',
+        time: t.createdAt,
+        displayTime: new Date(t.createdAt).toLocaleString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+        }),
+      }
+    })
+
+  const isUnread = (item) => new Date(item.time).getTime() > lastReadAt
+
   const allNotifications = isAdmin
-    ? adminWithdrawNotifications
+    ? [...adminWithdrawNotifications, ...adminTradeNotifications].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 6)
     : [...accountNotifications, ...serverNotifications, ...tradeNotifications, ...withdrawNotifications]
         .sort((a, b) => new Date(b.time) - new Date(a.time))
         .slice(0, 4)
 
   const displayNotifications = allNotifications
-  const loading = isAdmin ? adminWithdrawRequests === null : loadingTrades || loadingWithdraws
-  const isUnread = (item) => new Date(item.time).getTime() > lastReadAt
+  const loading = isAdmin ? adminWithdrawRequests === null && adminTrades === null : loadingTrades || loadingWithdraws
   const unreadCount = isAdmin
-    ? (adminWithdrawRequests ?? []).filter((w) => w.status === 'pending').length
+    ? (adminWithdrawRequests ?? []).filter((w) => w.status === 'pending').length + adminTradeNotifications.filter(isUnread).length
     : [...accountNotifications, ...serverNotifications, ...tradeNotifications, ...withdrawNotifications].filter(isUnread).length
 
   function go(to) {
     setOpen(false)
-    navigate(to)
+    if (to) navigate(to)
   }
 
   async function handleReturnToAdmin() {
@@ -326,7 +391,7 @@ export default function Topbar() {
                   {unreadCount > 0 && <span className="notification-dropdown-count">{unreadCount} new</span>}
                 </div>
 
-                {!isAdmin && unreadCount > 0 && (
+                {unreadCount > 0 && (
                   <button type="button" className="notification-mark-all" onClick={handleMarkAllRead}>
                     Mark all as read
                   </button>

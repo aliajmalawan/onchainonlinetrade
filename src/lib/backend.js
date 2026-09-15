@@ -108,6 +108,7 @@ export const apiAdminGetChats   = () => request('/admin/support_chats.php').then
 export const apiAdminGetChat    = (userId) => request('/admin/support_chat.php?userId=' + userId).then((d) => d.messages)
 export const apiAdminSendChat   = (userId, message) => request('/admin/support_chat.php', { method: 'POST', body: { userId, message } }).then((d) => d.message)
 export const apiAdminGetWithdrawRequests = () => request('/admin/withdraw_requests.php').then((d) => d.withdraws)
+export const apiAdminGetTrades = () => request('/admin/trades.php').then((d) => d.trades)
 export const apiAdminUpdateWithdrawStatus = (withdrawId, status, txId = null, fee = null) =>
   request('/admin/update_withdraw_status.php', {
     method: 'POST',
