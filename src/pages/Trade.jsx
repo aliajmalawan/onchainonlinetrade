@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getMarkets, getCoinChart, getBinancePrice, SHORT_CHART_RANGES } from '../lib/api'
 import { apiGetPortfolio } from '../lib/backend'
@@ -186,14 +187,19 @@ export default function Trade() {
     const coinToUse = priceById[exec.coinId]
     const amt = parseFloat(exec.amount)
     if (!coinToUse) return 'Pick a coin.'
-    if (!(amt >= 100)) return 'Enter an amount of at least 100.'
     if (coinToUse.current_price == null) return 'Live price unavailable, try again shortly.'
+
+    // A brand-new account has never deposited, so it has no USDT holding at
+    // all — surface that upfront (both directions stake in USDT) rather
+    // than let them enter an amount that can never actually be traded.
+    if (!usdtHolding || usdtHolding.amount <= 0) return 'ZERO_BALANCE'
+
+    if (!(amt >= 100)) return 'Enter an amount of at least 100.'
 
     // Every trade is staked in USDT regardless of which pair it references,
     // so a Sell Short needs USDT margin on hand, not the referenced coin.
-    if (exec.side === 'sell') {
-      if (!usdtHolding) return "You don't hold any USDT."
-      if (amt > usdtHolding.amount) return `You only hold ${num(usdtHolding.amount)} USDT.`
+    if (exec.side === 'sell' && amt > usdtHolding.amount) {
+      return `You only hold ${num(usdtHolding.amount)} USDT.`
     }
     return true
   }
@@ -583,7 +589,20 @@ export default function Trade() {
       <div className="row" style={{ alignItems: 'flex-start' }}>
         <div className="trade-left-col">
           <div className="panel panel-pad trade-form-panel">
-          {error && <div className="alert alert-error">{error}</div>}
+          {error && (
+            <div className="trade-toast" role="alert">
+              <button type="button" className="trade-toast-close" aria-label="Dismiss" onClick={() => setError('')}>
+                ×
+              </button>
+              {error === 'ZERO_BALANCE' ? (
+                <>
+                  Your balance is $0.00. <Link to="/account/deposit">Deposit funds</Link> to start trading.
+                </>
+              ) : (
+                error
+              )}
+            </div>
+          )}
           {success && <div className="alert alert-info">{success}</div>}
 
           <div className="field">
@@ -598,7 +617,7 @@ export default function Trade() {
             </select>
             {side === 'sell' && !usdtHolding && (
               <div className="muted" style={{ fontSize: 13, marginTop: 6 }}>
-                You don't hold any USDT yet — buy something first.
+                You don't hold any USDT yet — <Link to="/account/deposit">deposit funds</Link> to start trading.
               </div>
             )}
           </div>

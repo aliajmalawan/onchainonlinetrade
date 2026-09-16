@@ -221,6 +221,50 @@ h1, h2, h3, h4 {
 .field-error { color: var(--down); font-size: 12px; margin-top: 6px; }
 .field.has-error .input { border-color: #f3c6c6; }
 
+/* --- Slide-in toast (Trade page errors) ---------------------- */
+/* Fixed to the screen instead of pushed into the form's own layout, sliding
+   in from the side like a proper notification rather than a static block
+   at the top of the page. */
+.trade-toast {
+  position: fixed;
+  top: 84px;
+  right: 16px;
+  z-index: 2000;
+  max-width: 320px;
+  background: var(--panel);
+  border: 1px solid #f3c6c6;
+  border-left: 4px solid var(--down);
+  border-radius: var(--radius-sm);
+  padding: 14px 34px 14px 16px;
+  font-size: 13.5px;
+  line-height: 1.5;
+  color: #b91c1c;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+  animation: tradeToastIn 320ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+.trade-toast a { color: var(--teal); font-weight: 700; }
+.trade-toast-close {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  border: none;
+  background: transparent;
+  color: #b91c1c;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 4px 6px;
+  opacity: 0.6;
+}
+.trade-toast-close:hover { opacity: 1; }
+@keyframes tradeToastIn {
+  from { transform: translateX(120%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
+}
+@media (max-width: 480px) {
+  .trade-toast { left: 12px; right: 12px; max-width: none; top: 72px; }
+}
+
 .popup-overlay {
   position: fixed;
   inset: 0;
