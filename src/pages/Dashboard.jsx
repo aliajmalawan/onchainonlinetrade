@@ -290,7 +290,7 @@ export default function Dashboard() {
             accent="teal"
           />
           <StatCard
-            label="PENDING REQUESTS"
+            label="WITHDRAWAL REQUESTS"
             value={pendingCount === null ? '—' : String(pendingCount)}
             to="/admin/withdrawals"
             icon={<ClockStatIcon />}
