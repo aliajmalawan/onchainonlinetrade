@@ -19,6 +19,15 @@ $stmt->execute([$withdrawId]);
 $withdraw = $stmt->fetch();
 if (!$withdraw) json_err('Withdrawal request not found.', 404);
 
+// The requested amount is deducted from the user's holding the moment they
+// submit the request (withdraw_request.php), to reserve it while it's
+// pending — "completed" doesn't need to touch the balance again, the funds
+// are already gone. But rejecting one must hand that reservation back,
+// otherwise the user permanently loses funds for a withdrawal that never
+// went out. Only refund on the transition into "failed" (never on a later
+// re-save), so re-selecting "failed" can't double-credit.
+$newlyFailed = $status === 'failed' && $withdraw['status'] !== 'failed';
+
 $fields = ['status = ?'];
 $params = [$status];
 if ($txId !== '') {
@@ -31,8 +40,43 @@ if ($fee !== null) {
 }
 $params[] = $withdrawId;
 
-$stmt = db()->prepare('UPDATE withdraw_history SET ' . implode(', ', $fields) . ' WHERE id = ?');
-$stmt->execute($params);
+try {
+    $pdo = db();
+    $pdo->beginTransaction();
+
+    $pdo->prepare('UPDATE withdraw_history SET ' . implode(', ', $fields) . ' WHERE id = ?')->execute($params);
+
+    if ($newlyFailed) {
+        $symbol = strtoupper($withdraw['currency']);
+        $stmt = $pdo->prepare('SELECT * FROM holdings WHERE user_id = ? AND symbol = ?');
+        $stmt->execute([(int) $withdraw['user_id'], $symbol]);
+        $existing = $stmt->fetch();
+
+        if ($existing) {
+            // Exact reversal of the original deduction — no buy_price
+            // change, so this can't skew the holding's cost basis.
+            $pdo->prepare('UPDATE holdings SET amount = amount + ? WHERE id = ?')
+                ->execute([(float) $withdraw['amount'], $existing['id']]);
+        } else {
+            // The holding was fully drained by this withdrawal, so it has
+            // to be recreated from scratch — there's no stored cost basis
+            // to restore, so it falls back to the same buy_price=1.0
+            // assumption already used elsewhere in this codebase for
+            // exactly this gap (accurate for stablecoins; a non-stablecoin
+            // refund here would need a real price source to be precise).
+            $meta = deposit_coin_meta($withdraw['currency']);
+            add_or_merge_holding(
+                (int) $withdraw['user_id'], $meta['coinId'], $meta['symbol'], $meta['name'], $meta['image'],
+                (float) $withdraw['amount'], 1.0
+            );
+        }
+    }
+
+    $pdo->commit();
+} catch (PDOException $e) {
+    $pdo->rollBack();
+    json_err('Failed to update withdrawal request.', 500);
+}
 
 $stmt = db()->prepare(
     'SELECT w.*, u.name AS user_name, u.email AS user_email
