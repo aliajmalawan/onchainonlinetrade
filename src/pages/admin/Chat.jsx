@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import ChatThread from '../../components/ChatThread'
-import { apiAdminGetChats, apiAdminGetChat, apiAdminSendChat } from '../../lib/backend'
+import { apiAdminGetChats, apiAdminGetChat, apiAdminSendChat, apiGetUsers } from '../../lib/backend'
 
 const POLL_MS = 5000
 
 export default function Chat() {
   const [conversations, setConversations] = useState([])
+  const [allUsers, setAllUsers] = useState([])
   const [selected, setSelected] = useState(null)
   const [messages, setMessages] = useState([])
 
@@ -24,6 +25,23 @@ export default function Chat() {
   }, [])
 
   useEffect(() => {
+    apiGetUsers().then(setAllUsers).catch(() => {})
+  }, [])
+
+  // Every non-admin user shows up here, not just the ones who've already
+  // messaged support — so admin can start a conversation with anyone, not
+  // only reply to existing threads.
+  const conversationList = useMemo(() => {
+    const withConvo = [...conversations].sort((a, b) => new Date(b.lastAt) - new Date(a.lastAt))
+    const withConvoIds = new Set(conversations.map((c) => c.userId))
+    const withoutConvo = allUsers
+      .filter((u) => u.role !== 'admin' && !withConvoIds.has(u.id))
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((u) => ({ userId: u.id, name: u.name, email: u.email, lastMessage: null, lastSender: null, lastAt: null }))
+    return [...withConvo, ...withoutConvo]
+  }, [conversations, allUsers])
+
+  useEffect(() => {
     if (!selected) {
       setMessages([])
       return
@@ -39,7 +57,7 @@ export default function Chat() {
     loadConversations()
   }
 
-  const active = conversations.find((c) => c.userId === selected)
+  const active = conversationList.find((c) => c.userId === selected)
 
   const initials = (name) =>
     (name || '')
@@ -54,13 +72,13 @@ export default function Chat() {
       <div className="page-head">
         <div className="eyebrow">Admin</div>
         <h1>Live Chat</h1>
-        <p>Conversations with users who've messaged support.</p>
+        <p>Every user — message anyone, not just those who've already written in.</p>
       </div>
 
       <div className={'row chat-row' + (selected ? ' chat-thread-open' : '')}>
         <div className="panel chat-convo-list">
-          {conversations.length === 0 && <div className="empty">No conversations yet.</div>}
-          {conversations.map((c) => (
+          {conversationList.length === 0 && <div className="empty">No users yet.</div>}
+          {conversationList.map((c) => (
             <button
               key={c.userId}
               className={'chat-convo-item' + (selected === c.userId ? ' active' : '')}
@@ -70,8 +88,14 @@ export default function Chat() {
               <div className="chat-convo-text">
                 <div className="chat-convo-name">{c.name}</div>
                 <div className="chat-convo-preview muted">
-                  {c.lastSender === 'admin' ? 'You: ' : ''}
-                  {c.lastMessage}
+                  {c.lastMessage ? (
+                    <>
+                      {c.lastSender === 'admin' ? 'You: ' : ''}
+                      {c.lastMessage}
+                    </>
+                  ) : (
+                    'No messages yet — start a conversation'
+                  )}
                 </div>
               </div>
             </button>
