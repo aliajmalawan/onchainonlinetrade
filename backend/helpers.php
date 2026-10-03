@@ -363,14 +363,56 @@ function public_kyc(array $k): array
     ];
 }
 
+/**
+ * Saves an uploaded chat attachment from $_FILES['file'], if present, and
+ * returns [path, originalName, type] ('image' or 'file') relative to the
+ * backend root — or [null, null, null] when no file was sent. Shared by
+ * both the user-side and admin-side support chat endpoints. Ends the
+ * request with an error response itself on an invalid/oversized file so
+ * callers don't need their own validation branch.
+ */
+function handle_chat_attachment(): array
+{
+    if (empty($_FILES['file']) || !is_uploaded_file($_FILES['file']['tmp_name'])) {
+        return [null, null, null];
+    }
+    $file = $_FILES['file'];
+    if ($file['size'] > 10 * 1024 * 1024) {
+        json_err('Attachment must be 10MB or smaller.', 400);
+    }
+
+    $ext    = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+    $images = ['png', 'jpg', 'jpeg', 'webp', 'gif'];
+    $docs   = ['pdf'];
+    if (!in_array($ext, array_merge($images, $docs), true)) {
+        json_err('Unsupported file type. Allowed: images or PDF.', 400);
+    }
+
+    $uploadDir = __DIR__ . '/uploads/support_chat';
+    if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+    $fname = sprintf('chat_%d_%s.%s', time(), bin2hex(random_bytes(4)), $ext);
+    if (!move_uploaded_file($file['tmp_name'], $uploadDir . '/' . $fname)) {
+        json_err('Failed to save the attachment.', 500);
+    }
+
+    return [
+        'uploads/support_chat/' . $fname,
+        substr($file['name'], 0, 255),
+        in_array($ext, $images, true) ? 'image' : 'file',
+    ];
+}
+
 /** Shape a support-chat message row for the client. */
 function public_message(array $m): array
 {
     return [
-        'id'        => (int) $m['id'],
-        'userId'    => (int) $m['user_id'],
-        'sender'    => $m['sender'],
-        'message'   => $m['message'],
-        'createdAt' => $m['created_at'],
+        'id'             => (int) $m['id'],
+        'userId'         => (int) $m['user_id'],
+        'sender'         => $m['sender'],
+        'message'        => $m['message'],
+        'attachmentPath' => $m['attachment_path'] ?? null,
+        'attachmentName' => $m['attachment_name'] ?? null,
+        'attachmentType' => $m['attachment_type'] ?? null,
+        'createdAt'      => $m['created_at'],
     ];
 }

@@ -52,6 +52,44 @@ function MarketsIcon() {
   )
 }
 
+function EyeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8Z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  )
+}
+
+function EyeOffIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a18.46 18.46 0 0 1 4.22-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+      <path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+  )
+}
+
+function InfoIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" />
+      <line x1="12" y1="16" x2="12" y2="12" />
+      <line x1="12" y1="8" x2="12.01" y2="8" />
+    </svg>
+  )
+}
+
+function PlusIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19" />
+      <line x1="5" y1="12" x2="19" y2="12" />
+    </svg>
+  )
+}
+
 function UsersStatIcon() {
   return (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -109,6 +147,7 @@ export default function Dashboard() {
   const [pendingCount, setPendingCount] = useState(null)
   const [walletCount, setWalletCount] = useState(null)
   const [coinTab, setCoinTab] = useState('popular')
+  const [hideValue, setHideValue] = useState(false)
 
   const [retryTick, setRetryTick] = useState(0)
 
@@ -329,20 +368,46 @@ export default function Dashboard() {
   return (
     <div>
       <div className="panel panel-pad wallet-summary-card">
-        <div className="home-wallet-card-top">
-          <div>
-            <div className="muted" style={{ fontSize: 13 }}>Est. Total Value (USD)</div>
-            <div className="wallet-total-value">{usd(totals.value)}</div>
-          </div>
-          <button type="button" className="home-add-funds-btn" onClick={() => navigate('/wallet')}>
-            Add Funds
-          </button>
+        <div className="home-wallet-card-bg" aria-hidden="true">
+          <div className="home-wallet-coin">₿</div>
         </div>
-        <div className="home-pnl-row">
-          <span className="muted">Today PNL</span>
-          <span className={changeClass(totals.pnl)}>
-            {usd(totals.pnl)} ({pct(totals.pnlPct)})
-          </span>
+        <div className="home-wallet-card-content">
+          <div className="home-wallet-card-top">
+            <div>
+              <div className="home-wallet-label">
+                Estimated Total Value (USD)
+                <button
+                  type="button"
+                  className="home-eye-btn"
+                  onClick={() => setHideValue((v) => !v)}
+                  aria-label={hideValue ? 'Show balance' : 'Hide balance'}
+                >
+                  {hideValue ? <EyeOffIcon /> : <EyeIcon />}
+                </button>
+              </div>
+              <div className="home-wallet-value-row">
+                <div className="wallet-total-value">
+                  {hideValue ? <span className="wallet-value-mask">••••••</span> : usd(totals.value)}
+                </div>
+                <span className={'home-wallet-change-pill ' + (changeClass(totals.pnlPct) || 'up')}>
+                  {(totals.pnlPct || 0) >= 0 ? '▲' : '▼'} {Math.abs(totals.pnlPct || 0).toFixed(2)}%
+                </span>
+              </div>
+            </div>
+            <button type="button" className="home-add-funds-btn" onClick={() => navigate('/wallet')}>
+              <span className="home-add-funds-icon"><PlusIcon /></span>
+              Add Funds
+            </button>
+          </div>
+          <div className="home-pnl-row">
+            <span className="muted home-pnl-label">
+              Today PNL
+              <InfoIcon />
+            </span>
+            <span className={'home-pnl-amount ' + changeClass(totals.pnl)}>
+              {hideValue ? <span className="wallet-value-mask">••••••</span> : `${usd(totals.pnl)} (${pct(totals.pnlPct)})`}
+            </span>
+          </div>
         </div>
       </div>
 

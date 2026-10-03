@@ -7,7 +7,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') json_err('Method not allowed', 405);
 
 $b     = body();
 $name  = trim($b['name'] ?? '');
-$email = trim($b['email'] ?? '');
+$email = strtolower(trim($b['email'] ?? ''));
 $phone = trim($b['phone'] ?? '');
 
 if ($name === '' || $email === '' || $phone === '') json_err('Name, email and phone number are required.');

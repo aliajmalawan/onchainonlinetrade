@@ -5,7 +5,7 @@ cors();
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') json_err('Method not allowed', 405);
 
 $b        = body();
-$email    = trim($b['email'] ?? '');
+$email    = strtolower(trim($b['email'] ?? ''));
 $password = (string) ($b['password'] ?? '');
 
 $stmt = db()->prepare('SELECT * FROM users WHERE email = ?');

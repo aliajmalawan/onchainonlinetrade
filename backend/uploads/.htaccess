@@ -1,0 +1,6 @@
+# Everything under uploads/ is a user-submitted file (KYC images, deposit
+# proofs, chat attachments) — never a script we wrote — so scripts must
+# never execute from here, even if someone manages to upload one.
+<FilesMatch "\.(php|php\d|phtml|phar|pl|py|cgi|sh)$">
+    Require all denied
+</FilesMatch>

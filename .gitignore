@@ -20,6 +20,7 @@ dist-ssr
 backend/config.php
 backend/uploads/*
 !backend/uploads/.gitkeep
+!backend/uploads/.htaccess
 
 # Editor / OS
 .vscode/*

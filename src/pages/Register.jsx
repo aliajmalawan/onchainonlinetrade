@@ -45,11 +45,18 @@ export default function Register() {
   const [busy, setBusy] = useState(false)
 
   const set = (k) => (e) => setForm({ ...form, [k]: e.target.value })
+  // Emails are case-insensitive but look inconsistent if left mixed-case —
+  // normalize as the user types rather than silently rewriting on submit.
+  const setEmail = (e) => setForm({ ...form, email: e.target.value.toLowerCase() })
 
   async function handleSubmit() {
     setError('')
     if (!form.name.trim() || !form.email.trim() || !form.phone.trim() || form.password.length < 8) {
       setError('Fill every field. Password must be at least 8 characters.')
+      return
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email.trim())) {
+      setError('Please enter a valid email address.')
       return
     }
     setBusy(true)
@@ -100,7 +107,7 @@ export default function Register() {
           <label htmlFor="email">Email</label>
           <div className="input-icon-wrap">
             <span className="input-icon"><MailIcon /></span>
-            <input id="email" className="input" type="email" value={form.email} onChange={set('email')} placeholder="you@example.com" />
+            <input id="email" className="input" type="email" value={form.email} onChange={setEmail} placeholder="you@example.com" />
           </div>
         </div>
         <div className="field">

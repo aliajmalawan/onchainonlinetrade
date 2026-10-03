@@ -341,21 +341,91 @@ h1, h2, h3, h4 {
 .history-card.history-card-active { border-color: var(--teal); }
 
 /* --- Wallet page -------------------------------------------------- */
-/* Stays a fixed dark "brand" card regardless of the light page theme
+/* Stays a fixed dark teal "brand" card regardless of the light page theme
    around it — matches the reference wallet-app look. */
 .wallet-summary-card {
+  position: relative;
+  overflow: hidden;
   max-width: 480px;
   margin-top: -16px;
-  background: var(--dark-ink);
-  border-color: var(--dark-line);
+  background: linear-gradient(135deg, #03211c 0%, #0a3a33 55%, #0f5a4e 100%);
+  border-color: transparent;
   color: var(--dark-text);
 }
-.wallet-summary-card .muted { color: var(--dark-muted); }
-.wallet-summary-card .wallet-actions { border-top-color: var(--dark-line); }
+.wallet-summary-card .muted { color: rgba(231, 236, 245, 0.68); }
+.wallet-summary-card .wallet-actions { border-top-color: rgba(255, 255, 255, 0.14); }
 .wallet-summary-card .wallet-action-btn { color: var(--dark-text); }
 .wallet-summary-card .up { color: #4ade80; }
 .wallet-summary-card .down { color: #f87171; }
 .wallet-total-value { font-family: var(--font-mono); font-size: 34px; font-weight: 700; margin-top: 4px; }
+/* The masked "hidden balance" placeholder — a plain sans-serif bullet
+   instead of inheriting the monospace font, whose U+2022 glyph can fall
+   back to a much wider substitute font on some platforms and silently
+   push the percentage pill onto its own line, growing the card. */
+.wallet-value-mask { font-family: Arial, Helvetica, sans-serif; letter-spacing: 3px; }
+
+/* Decorative coin + candlestick graphic behind the card's text — purely
+   visual, sits under the content via z-index, never intercepts clicks. */
+.home-wallet-card-bg { position: absolute; inset: 0; overflow: hidden; pointer-events: none; perspective: 500px; }
+.home-wallet-coin {
+  position: absolute;
+  right: 26px;
+  top: 46%;
+  width: 92px;
+  height: 92px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #4fe8cd, #0f9c8f 55%, #06332d 100%);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35), inset 0 0 24px rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 40px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.85);
+  font-family: var(--font-display);
+  transform-style: preserve-3d;
+  animation: homeCoinFloat3d 5s ease-in-out infinite;
+}
+/* A gentle continuous tilt + bob — reads as a "living" 3D coin rather than a
+   flat icon, without ever rotating far enough to mirror the ₿ glyph. */
+@keyframes homeCoinFloat3d {
+  0%, 100% { transform: translateY(-46%) rotateY(-16deg) rotateX(5deg); }
+  50% { transform: translateY(-54%) rotateY(16deg) rotateX(-5deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-wallet-coin { animation: none; transform: translateY(-50%); }
+}
+.home-wallet-card-content { position: relative; z-index: 1; }
+
+.home-wallet-label { display: flex; align-items: center; gap: 6px; font-size: 13px; color: rgba(231, 236, 245, 0.68); }
+.home-eye-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  padding: 0;
+  color: rgba(231, 236, 245, 0.55);
+  cursor: pointer;
+}
+.home-eye-btn:hover { color: rgba(231, 236, 245, 0.9); }
+/* Never wraps: the value truncates with an ellipsis (via .wallet-total-value)
+   before the percentage pill is ever pushed to a second line — otherwise a
+   wider "hidden balance" placeholder could silently grow the card's height. */
+.home-wallet-value-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; min-width: 0; }
+.home-wallet-change-pill {
+  display: inline-flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 3px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.home-wallet-change-pill.up { background: rgba(74, 222, 128, 0.18); color: #4ade80; }
+.home-wallet-change-pill.down { background: rgba(248, 113, 113, 0.18); color: #f87171; }
+.home-wallet-change-pill.flat { background: rgba(255, 255, 255, 0.14); color: rgba(231, 236, 245, 0.75); }
 .wallet-actions {
   display: flex;
   justify-content: center;
@@ -379,10 +449,20 @@ h1, h2, h3, h4 {
   text-decoration: none;
   cursor: pointer;
 }
-.wallet-pill-btn-deposit { background: var(--up); color: #fff; }
-.wallet-pill-btn-deposit:hover { background: #15803d; text-decoration: none; }
-.wallet-pill-btn-withdraw { background: var(--down); color: #fff; }
-.wallet-pill-btn-withdraw:hover { background: #b91c1c; text-decoration: none; }
+.wallet-pill-btn-deposit {
+  background: linear-gradient(180deg, #34d399 0%, #16a34a 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(22, 163, 74, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.wallet-pill-btn-deposit:hover { background: linear-gradient(180deg, #34d399 0%, #15803d 100%); text-decoration: none; }
+.wallet-pill-btn-withdraw {
+  background: linear-gradient(180deg, #f87171 0%, #dc2626 100%);
+  color: #fff;
+  box-shadow: 0 4px 14px rgba(220, 38, 38, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+.wallet-pill-btn-withdraw:hover { background: linear-gradient(180deg, #f87171 0%, #b91c1c 100%); text-decoration: none; }
+.wallet-pill-btn { transition: transform 0.15s ease; }
+.wallet-pill-btn:active { transform: scale(0.97); }
 .wallet-action-btn {
   display: flex;
   flex-direction: column;
@@ -412,33 +492,61 @@ h1, h2, h3, h4 {
 /* --- Home wallet card (user Dashboard) ----------------------------- */
 .home-wallet-card-top {
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 12px;
+  gap: 10px 12px;
 }
+.home-wallet-card-top > div:first-child { min-width: 0; flex: 1 1 180px; }
 .home-add-funds-btn {
-  background: #fff;
-  color: var(--dark-ink);
+  display: inline-flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 8px;
+  background: linear-gradient(180deg, #ffffff 0%, #eef3f2 100%);
+  color: #0b2b27;
   border: none;
   border-radius: 999px;
-  padding: 10px 18px;
+  padding: 9px 18px 9px 9px;
   font-weight: 700;
   font-size: 13px;
   cursor: pointer;
   white-space: nowrap;
   font-family: var(--font-body);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.22), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
-.home-add-funds-btn:hover { background: #e7ecf5; }
-.home-pnl-row {
+.home-add-funds-btn:hover {
+  background: linear-gradient(180deg, #ffffff 0%, #e3ebe9 100%);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.28), inset 0 1px 0 rgba(255, 255, 255, 0.7);
+}
+.home-add-funds-btn:active { transform: translateY(0); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); }
+.home-add-funds-icon {
   display: flex;
   align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--teal);
+  color: #fff;
+  flex: 0 0 auto;
+  box-shadow: 0 0 0 1px rgba(15, 156, 143, 0.3);
+}
+.home-pnl-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
   justify-content: space-between;
-  gap: 12px;
+  gap: 6px 12px;
   margin-top: 20px;
   padding-top: 16px;
-  border-top: 1px solid var(--dark-line);
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
   font-size: 14px;
 }
+.home-pnl-label { display: flex; align-items: center; flex: 0 0 auto; gap: 6px; }
+.home-pnl-amount { flex: 1 1 auto; min-width: 0; text-align: right; }
 
 /* Deposit/Withdraw/Convert/Markets — sits below the dark card, on the
    light page background, unlike .wallet-actions which nests inside it. */
@@ -526,6 +634,27 @@ h1, h2, h3, h4 {
 .history-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .history-card-icon-group { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .history-card-icon-group img { width: 26px; height: 26px; border-radius: 50%; flex: 0 0 auto; }
+.wallet-coin-icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--panel-2);
+  flex: 0 0 auto;
+}
+.wallet-holding-value { font-family: var(--font-mono); font-weight: 700; font-size: 14px; }
+.wallet-portfolio-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 24px;
+  margin-bottom: 12px;
+}
+.wallet-portfolio-head h2 { font-size: 16px; margin: 0; }
+.wallet-portfolio-head .muted { font-size: 12px; }
 .history-card-symbol { font-weight: 600; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .history-card-stake { font-family: var(--font-mono); font-weight: 700; font-size: 15px; flex: 0 0 auto; }
 .history-card-bottom {
@@ -1341,50 +1470,427 @@ table.data .num { font-family: var(--font-mono); text-align: right; }
 .support-panel {
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 220px);
+  /* 100vh on a real phone browser is the LARGEST possible viewport (address
+     bar hidden) — on first load, with the address bar still shown, that
+     overestimates the visible area and pushes the input row below the
+     fold. 100dvh is supposed to track the real visible viewport, but many
+     Android Chrome builds don't shrink it reliably when the keyboard opens
+     or the browser's own toolbar shows/hides on scroll — so --vvh (kept
+     live by Layout.jsx via window.visualViewport) is tried first, with vh
+     then dvh as fallbacks for the instant before that JS runs. */
+  height: calc(100vh - 186px);
+  height: calc(100dvh - 186px);
+  height: calc(var(--vvh, 100dvh) - 186px);
+  overflow: hidden;
 }
 .support-panel .chat-box {
   flex: 1;
   min-height: 0;
+  padding: 0 8px 12px;
 }
-.chat-messages {
-  flex: 1;
-  overflow-y: auto;
+
+/* The support chat is meant to read as one continuous screen — topbar
+   flowing straight into the header, header into the messages — not as
+   separate floating cards with a gap between them. Applies at every screen
+   size, but keeps the same narrow centered column the rest of the app uses
+   (no edge-to-edge stretch on wide screens) — only the gap and the
+   double border/shadow between the two pieces are removed, with matching
+   corner rounding so they still read as one merged card. Layout.jsx adds
+   `chat-fullscreen` only on the /support route, so every other page is
+   unaffected. */
+/* Pinned directly to the real visible area via --vvh/--vv-top (see
+   Layout.jsx) rather than trusting any vh/dvh unit — those are unreliable
+   once the on-screen keyboard is involved (some browsers don't shrink dvh
+   for it at all, and even where they do, the page can still be panned
+   within the layout viewport to keep the focused input visible, which vh
+   units can't see). Pulling the whole screen out of normal flow like this
+   means its height is never a guess. */
+.main.chat-fullscreen {
+  position: fixed;
+  left: 0;
+  right: 0;
+  top: var(--vv-top, 0px);
+  height: var(--vvh, 100dvh);
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  padding: 4px 4px 12px;
+  overflow: hidden;
+}
+.main.chat-fullscreen .topbar-wrap { position: static; flex: 0 0 auto; padding: 0; }
+.main.chat-fullscreen .topbar {
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: none;
+}
+.main.chat-fullscreen .content {
+  flex: 1;
+  min-height: 0;
+  padding: 0 0 92px;
+  display: flex;
+  flex-direction: column;
+}
+/* Layout.jsx adds this once the keyboard is open and the floating bottom
+   nav is hidden — the space reserved for it would otherwise sit there
+   unused instead of giving the chat the extra room back. */
+.main.chat-fullscreen.nav-hidden .content { padding-bottom: 0; }
+.main.chat-fullscreen .support-page { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.main.chat-fullscreen .support-panel {
+  flex: 1;
+  min-height: 0;
+  height: auto;
+  border-top: none;
+  border-radius: 0 0 var(--radius) var(--radius);
+}
+
+/* Light, premium "support widget" header — a soft brand-tinted gradient
+   rather than a flat dark bar — showing the brand and an always-on
+   "Online" status rather than a plain page title. */
+.support-chat-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 20px;
+  background: linear-gradient(135deg, #e3f6f3 0%, #eaf2fb 100%);
+  border-bottom: 1px solid var(--line);
+  color: var(--text);
+  flex: 0 0 auto;
+}
+.support-chat-avatar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--teal);
+  color: #ffffff;
+  box-shadow: 0 4px 10px rgba(15, 156, 143, 0.35);
+  flex: 0 0 auto;
+}
+.support-chat-title { font-weight: 700; font-size: 15px; }
+.support-chat-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.support-chat-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--up);
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2);
+}
+.chat-messages {
+  position: relative;
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 10px 6px 14px;
+  background: linear-gradient(180deg, #eaf7f5 0%, #eef4fb 100%);
+  border-radius: var(--radius-sm);
+}
+/* Faint brand watermark (a coin mark + a candlestick cluster + a dot grid)
+   behind the thread — purely decorative, never intercepts clicks, and sits
+   under the opaque bubbles/date pills via z-index. */
+.chat-backdrop {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  background-image: radial-gradient(rgba(15, 156, 143, 0.16) 1.5px, transparent 1.5px);
+  background-size: 20px 20px;
+  background-position: -4px 60%;
+  -webkit-mask-image: linear-gradient(135deg, black 0%, black 30%, transparent 65%);
+  mask-image: linear-gradient(135deg, black 0%, black 30%, transparent 65%);
+}
+.chat-backdrop-coin {
+  position: absolute;
+  top: 14px;
+  left: 4px;
+  width: 104px;
+  height: 104px;
+  border-radius: 50%;
+  background: rgba(15, 156, 143, 0.1);
+  color: rgba(15, 156, 143, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 50px;
+  font-weight: 700;
+  font-family: var(--font-display);
+}
+.chat-backdrop-candles {
+  position: absolute;
+  top: 18px;
+  right: 8px;
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 84px;
+  opacity: 0.55;
+}
+.chat-backdrop-candles span { width: 6px; border-radius: 2px; background: var(--teal-dim); display: block; }
+
+.chat-date-sep { align-self: center; position: relative; z-index: 1; margin: 2px 0; }
+.chat-date-sep span {
+  display: inline-block;
+  background: rgba(16, 24, 40, 0.08);
+  color: var(--muted);
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 999px;
+}
+
+.chat-msg-row { position: relative; z-index: 1; display: flex; align-items: flex-end; gap: 8px; max-width: 82%; }
+.chat-msg-row.mine { align-self: flex-end; justify-content: flex-end; margin-left: auto; }
+.chat-msg-row.theirs { align-self: flex-start; }
+.chat-msg-avatar {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--teal);
+  color: #ffffff;
+  font-size: 10px;
+  font-weight: 700;
 }
 .chat-bubble {
-  max-width: 75%;
-  padding: 8px 12px;
-  border-radius: 12px;
+  max-width: 100%;
+  padding: 9px 13px;
   font-size: 14px;
-  line-height: 1.4;
+  line-height: 1.45;
   word-break: break-word;
+  white-space: pre-wrap;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08);
 }
-.chat-bubble.theirs { align-self: flex-start; background: var(--panel-2); border: 1px solid var(--line); }
-.chat-bubble.mine { align-self: flex-end; background: var(--teal); color: #05201c; }
-.chat-meta { font-size: 10px; opacity: 0.65; margin-top: 4px; }
-.chat-bubble.mine .chat-meta { color: #05201c; }
-.chat-input-row { display: flex; gap: 8px; padding-top: 10px; border-top: 1px solid var(--line); }
-.chat-input-row .input { flex: 1; }
+/* A small flattened corner on the side the bubble "points" from gives the
+   thread a tail-like, hand-finished feel instead of uniform rounded boxes. */
+.chat-bubble.theirs {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 4px 14px 14px 14px;
+}
+.chat-bubble.mine {
+  background: var(--teal);
+  color: #ffffff;
+  border-radius: 14px 4px 14px 14px;
+}
+.chat-meta { display: flex; align-items: center; gap: 4px; font-size: 10px; opacity: 0.65; margin-top: 4px; }
+.chat-bubble.mine .chat-meta { color: rgba(255, 255, 255, 0.85); }
+.chat-caption { margin-top: 6px; }
 
-.chat-convo-list { flex: 0 0 280px; max-height: 560px; overflow-y: auto; }
+.chat-attachment-image { display: block; border-radius: 10px; overflow: hidden; max-width: 220px; }
+.chat-attachment-image img { display: block; width: 100%; max-height: 220px; object-fit: cover; }
+.chat-attachment-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.06);
+  color: inherit;
+  max-width: 220px;
+}
+.chat-bubble.theirs .chat-attachment-file { background: var(--panel-2); }
+.chat-attachment-file span { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* The chip shown above the composer once a file is picked but not sent yet. */
+.chat-pending-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  margin-top: 10px;
+  background: var(--panel-2);
+  border-radius: var(--radius-sm);
+}
+.chat-pending-thumb {
+  flex: 0 0 auto;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+.chat-pending-thumb-file {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
+.chat-pending-name { flex: 1; min-width: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+.chat-input-row { display: flex; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid var(--line); }
+.chat-input-pill {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  background: var(--panel-2);
+  border-radius: 999px;
+  padding: 4px 6px 4px 4px;
+}
+.chat-input-field {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  background: transparent;
+  padding: 8px 4px;
+  font-size: 14px;
+  color: var(--text);
+  outline: none;
+}
+.chat-input-field::placeholder { color: var(--muted); }
+.chat-input-field:disabled { opacity: 0.6; }
+.chat-icon-btn {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: none;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.chat-icon-btn:hover:not(:disabled) { background: rgba(15, 156, 143, 0.12); color: var(--teal); }
+.chat-icon-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.chat-emoji-wrap { position: relative; flex: 0 0 auto; }
+.chat-emoji-popover {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  right: -4px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 2px;
+  z-index: 5;
+}
+.chat-emoji-popover button {
+  border: none;
+  background: none;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 5px;
+  border-radius: 6px;
+}
+.chat-emoji-popover button:hover { background: var(--panel-2); }
+
+.chat-send-btn {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  border: none;
+  background: var(--teal);
+  color: #ffffff;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(15, 156, 143, 0.35);
+  transition: opacity 0.15s ease, transform 0.1s ease;
+}
+.chat-send-btn:hover:not(:disabled) { transform: scale(1.05); }
+.chat-send-btn:active:not(:disabled) { transform: scale(0.95); }
+.chat-send-btn:disabled { opacity: 0.4; cursor: default; box-shadow: none; }
+
+/* The app shell is always a narrow (max 460px) column, even in a wide
+   desktop browser — so the admin chat list and an open thread can never
+   really sit side by side. Show exactly one at a time, like a real chat
+   app on any screen size, instead of a two-pane layout that only worked
+   (and even then, overflowed) below a literal 420px viewport. */
+.chat-row { position: relative; align-items: stretch; }
+.chat-row.chat-thread-open .chat-list-pane { display: none; }
+.chat-row:not(.chat-thread-open) .chat-thread-panel { display: none; }
+
+.chat-list-pane,
+.chat-thread-panel {
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+  flex: 1 1 auto;
+  height: calc(100vh - 260px);
+  height: calc(100dvh - 260px);
+  height: calc(var(--vvh, 100dvh) - 260px);
+  display: flex;
+  flex-direction: column;
+}
+.chat-list-pane { gap: 12px; }
+
+/* --- Search + filter toolbar, above the conversation list --- */
+.chat-toolbar { display: flex; gap: 8px; flex: 0 0 auto; }
+.chat-search-wrap { flex: 1; min-width: 0; }
+.chat-search-wrap .input { padding-top: 9px; padding-bottom: 9px; }
+.chat-filter-select {
+  flex: 0 0 auto;
+  width: auto;
+  max-width: 120px;
+  background: var(--ink);
+  border: 1px solid var(--line);
+  color: var(--text);
+  padding: 9px 26px 9px 14px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: var(--font-body);
+  cursor: pointer;
+}
+.chat-filter-select:focus {
+  outline: none;
+  border-color: var(--teal);
+  box-shadow: 0 0 0 3px rgba(45, 212, 191, 0.12);
+}
+
+.chat-convo-list { flex: 1; overflow-y: auto; padding: 6px; display: flex; flex-direction: column; }
 .chat-convo-item {
   display: flex;
   align-items: center;
   gap: 10px;
   width: 100%;
+  min-width: 0;
   text-align: left;
   background: none;
   border: none;
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-sm);
   border-bottom: 1px solid var(--line);
-  padding: 12px 14px;
+  padding: 12px 10px 12px 7px;
   cursor: pointer;
   color: var(--text);
 }
-.chat-convo-item:hover, .chat-convo-item.active { background: var(--panel-2); }
+.chat-convo-list .chat-convo-item:last-child { border-bottom: none; }
+.chat-convo-item:hover { background: var(--panel-2); }
+.chat-convo-item.active { background: rgba(15, 156, 143, 0.07); border-left-color: var(--teal); }
+.chat-convo-avatar-wrap { position: relative; flex: 0 0 auto; }
+.chat-presence-dot {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--faint);
+  border: 2px solid var(--panel);
+}
+.chat-presence-dot.online { background: var(--up); }
 .chat-convo-text { min-width: 0; flex: 1; }
 .chat-convo-name {
   font-weight: 600;
@@ -1396,12 +1902,61 @@ table.data .num { font-family: var(--font-mono); text-align: right; }
 .chat-convo-preview {
   font-size: 13px;
   margin-top: 2px;
+  min-width: 0;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+.chat-convo-meta {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+}
+.chat-convo-time { font-size: 11px; color: var(--muted); white-space: nowrap; }
+.chat-unread-badge {
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--up);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.chat-convo-chevron { flex: 0 0 auto; color: var(--faint); }
 
-.chat-row { align-items: flex-start; }
+/* --- Page-head decorative chat-bubble illustration (Live Chat page) --- */
+.chat-page-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.page-head-illustration { position: relative; width: 64px; height: 56px; flex: 0 0 auto; }
+.page-head-illustration .bubble {
+  position: absolute;
+  border-radius: 14px 14px 14px 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  box-shadow: var(--shadow);
+}
+.page-head-illustration .bubble-1 { left: 0; top: 12px; width: 40px; height: 32px; background: var(--panel); border: 1px solid var(--line); }
+.page-head-illustration .bubble-2 {
+  right: 0;
+  top: 0;
+  width: 44px;
+  height: 36px;
+  background: var(--teal);
+  border-radius: 14px 14px 2px 14px;
+}
+.page-head-illustration .bubble span { width: 4px; height: 4px; border-radius: 50%; background: var(--teal-dim); }
+.page-head-illustration .bubble-2 span { background: rgba(255, 255, 255, 0.85); }
+
+.chat-thread-panel { min-width: 0; padding: 16px; overflow: hidden; }
+.chat-thread-panel > .empty { margin: auto; }
+.chat-thread-panel .chat-box { flex: 1; min-height: 0; }
 
 .chat-thread-header {
   display: flex;
@@ -1410,11 +1965,19 @@ table.data .num { font-family: var(--font-mono); text-align: right; }
   margin-bottom: 12px;
   padding-bottom: 12px;
   border-bottom: 1px solid var(--line);
+  flex: 0 0 auto;
 }
-.chat-thread-who { display: flex; align-items: center; gap: 10px; min-width: 0; }
-.chat-thread-who strong { display: block; font-size: 14px; }
+.chat-thread-who { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.chat-thread-who strong {
+  display: block;
+  font-size: 14px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.chat-thread-who .muted { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .chat-back-btn {
-  display: none;
+  display: inline-flex;
   align-items: center;
   justify-content: center;
   width: 32px;
@@ -1520,10 +2083,6 @@ table.data .num { font-family: var(--font-mono); text-align: right; }
   .profile-menu-name { display: none; }
   .profile-menu-avatar { display: inline-flex; }
 
-  .support-panel {
-    min-height: auto;
-  }
-
   .page-head h1 { font-size: 22px; }
 
   /* Trade page: stack the form and chart panels full-width. */
@@ -1550,25 +2109,7 @@ table.data .num { font-family: var(--font-mono); text-align: right; }
   .analytics-stat-grid .stat .value { font-size: 22px; margin-top: 4px; }
   .coin-detail-stat-grid .stat .value { font-size: 18px; margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: clip; }
 
-  /* Admin live chat: show one panel at a time (list, or the open thread) —
-     the fixed bottom tab bar leaves too little height to stack both and
-     still keep the reply box above it, so this mirrors a normal chat app:
-     tap a conversation to open it full-screen, back arrow to return. */
-  .chat-row { position: relative; align-items: stretch; }
-  .chat-row.chat-thread-open .chat-convo-list { display: none; }
-  .chat-row:not(.chat-thread-open) .chat-thread-panel { display: none; }
-  .chat-convo-list,
-  .chat-thread-panel {
-    flex: 1 1 100%;
-    max-width: none;
-    height: calc(100vh - 360px);
-    max-height: none;
-    display: flex;
-    flex-direction: column;
-  }
-  .chat-thread-panel { min-width: 0; padding: 14px; }
-  .chat-back-btn { display: inline-flex; }
-  .chat-box { min-height: 0; flex: 1; }
+  .chat-thread-panel { padding: 14px; }
 
   /* Avoid iOS Safari auto-zooming in when a text input gets focus. */
   .input, select.input { font-size: 16px; }

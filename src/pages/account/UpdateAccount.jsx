@@ -35,6 +35,7 @@ export default function UpdateAccount() {
     setError('')
     setSuccess('')
     if (!name.trim() || !email.trim() || !phone.trim()) return setError('Name, email and phone number are required.')
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) return setError('Please enter a valid email address.')
 
     setBusy(true)
     try {
@@ -82,7 +83,7 @@ export default function UpdateAccount() {
               </div>
               <div className="field mb-0">
                 <label htmlFor="email">Email</label>
-                <input id="email" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+                <input id="email" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value.toLowerCase())} />
               </div>
               <div className="field mb-0" style={{ marginTop: 16 }}>
                 <label htmlFor="phone">Phone Number</label>
@@ -110,7 +111,7 @@ export default function UpdateAccount() {
           </div>
           <div className="field">
             <label htmlFor="email">Email</label>
-            <input id="email" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+            <input id="email" className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value.toLowerCase())} />
           </div>
           <div className="field">
             <label htmlFor="phone">Phone Number</label>

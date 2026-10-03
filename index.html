@@ -3,7 +3,12 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- interactive-widget=resizes-content (Chrome 108+) makes the browser
+         actually shrink the layout viewport — and therefore 100dvh — when
+         the on-screen keyboard opens, instead of just overlaying it with
+         vh/dvh left unchanged. Without this, a fixed-height chat screen has
+         no reliable way to know how much room the keyboard just took. -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content" />
     <title>OnChainTrade — Portfolio Dashboard</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

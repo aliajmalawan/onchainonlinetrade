@@ -89,8 +89,26 @@ export const apiUpdatePassword = (currentPassword, newPassword) => request('/upd
 export const apiUpdateAccount  = (name, email, phone) => request('/update_account.php', { method: 'POST', body: { name, email, phone } }).then((d) => d.user)
 
 // --- Support chat ---
-export const apiGetSupportChat  = () => request('/support_chat.php').then((d) => d.messages)
-export const apiSendSupportChat = (message) => request('/support_chat.php', { method: 'POST', body: { message } }).then((d) => d.message)
+export const apiGetSupportChat = () => request('/support_chat.php').then((d) => d.messages)
+
+// Plain text keeps using the JSON path; an attachment switches to
+// multipart/form-data (same endpoint either way).
+export async function apiSendSupportChat(message, file) {
+  if (!file) {
+    return request('/support_chat.php', { method: 'POST', body: { message } }).then((d) => d.message)
+  }
+  const ROOT = (import.meta.env.VITE_BACKEND_URL || '/api').replace(/\/api$/, '')
+  const fd = new FormData()
+  fd.append('message', message || '')
+  fd.append('file', file)
+  const headers = {}
+  const t = localStorage.getItem('ct.token')
+  if (t) headers['Authorization'] = 'Bearer ' + t
+  const res = await fetch(ROOT + '/api/support_chat.php', { method: 'POST', headers, body: fd })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || 'Request failed')
+  return data.message
+}
 
 export const apiGetNotifications = () => request('/notifications.php').then((d) => d.notifications)
 export const apiMarkNotificationRead = (id) => request('/notifications.php', { method: 'POST', body: { id } })
@@ -104,9 +122,26 @@ export const apiAdminUpdateHolding = (holdingId, amount) => request('/admin/upda
 export const apiAdminDeleteHolding = (holdingId) => request('/admin/delete_holding.php', { method: 'POST', body: { holdingId } })
 export const apiAdminUpdateModes = (userId, payload) => request('/admin/update_trade_mode.php', { method: 'POST', body: { userId, ...payload } }).then((d) => d.user)
 export const apiAdminImpersonate = (userId) => request('/admin/impersonate.php', { method: 'POST', body: { userId } })
-export const apiAdminGetChats   = () => request('/admin/support_chats.php').then((d) => d.conversations)
-export const apiAdminGetChat    = (userId) => request('/admin/support_chat.php?userId=' + userId).then((d) => d.messages)
-export const apiAdminSendChat   = (userId, message) => request('/admin/support_chat.php', { method: 'POST', body: { userId, message } }).then((d) => d.message)
+export const apiAdminGetChats = () => request('/admin/support_chats.php').then((d) => d.conversations)
+export const apiAdminGetChat  = (userId) => request('/admin/support_chat.php?userId=' + userId).then((d) => d.messages)
+
+export async function apiAdminSendChat(userId, message, file) {
+  if (!file) {
+    return request('/admin/support_chat.php', { method: 'POST', body: { userId, message } }).then((d) => d.message)
+  }
+  const ROOT = (import.meta.env.VITE_BACKEND_URL || '/api').replace(/\/api$/, '')
+  const fd = new FormData()
+  fd.append('userId', userId)
+  fd.append('message', message || '')
+  fd.append('file', file)
+  const headers = {}
+  const t = localStorage.getItem('ct.token')
+  if (t) headers['Authorization'] = 'Bearer ' + t
+  const res = await fetch(ROOT + '/api/admin/support_chat.php', { method: 'POST', headers, body: fd })
+  const data = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(data.error || 'Request failed')
+  return data.message
+}
 export const apiAdminGetWithdrawRequests = () => request('/admin/withdraw_requests.php').then((d) => d.withdraws)
 export const apiAdminGetTrades = () => request('/admin/trades.php').then((d) => d.trades)
 export const apiAdminUpdateWithdrawStatus = (withdrawId, status, txId = null, fee = null) =>
