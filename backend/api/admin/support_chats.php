@@ -17,7 +17,7 @@ $rows = db()->query("
            m.message         AS last_message,
            m.attachment_type AS last_attachment_type,
            m.sender          AS last_sender,
-           m.created_at      AS last_at,
+           UNIX_TIMESTAMP(m.created_at) AS last_ts,
            (
              SELECT COUNT(*) FROM support_messages sm
              WHERE sm.user_id = u.id AND sm.sender = 'user'
@@ -45,7 +45,7 @@ json_out(['conversations' => array_map(function ($r) {
         'lastMessage'         => $r['last_message'],
         'lastAttachmentType'  => $r['last_attachment_type'],
         'lastSender'          => $r['last_sender'],
-        'lastAt'              => $r['last_at'],
+        'lastAt'              => gmdate('c', (int) $r['last_ts']),
         'unreadCount'         => (int) $r['unread_count'],
         'online'              => (bool) $r['is_online'],
     ];

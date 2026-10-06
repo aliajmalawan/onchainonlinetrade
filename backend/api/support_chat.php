@@ -10,7 +10,7 @@ if ($method === 'GET') {
     // id as a tiebreaker: created_at is second-precision, so the auto-reply
     // (inserted right after a first message, in the same request) can land
     // in the very same second and would otherwise sort unpredictably.
-    $stmt = db()->prepare('SELECT * FROM support_messages WHERE user_id = ? ORDER BY created_at ASC, id ASC');
+    $stmt = db()->prepare('SELECT *, UNIX_TIMESTAMP(created_at) AS created_ts FROM support_messages WHERE user_id = ? ORDER BY created_at ASC, id ASC');
     $stmt->execute([$u['id']]);
     json_out(['messages' => array_map('public_message', $stmt->fetchAll())]);
 }
@@ -46,7 +46,7 @@ if ($method === 'POST') {
 
     // Return the user's own message (what the caller just sent), not
     // whichever row ended up with the highest id.
-    $row = db()->query('SELECT * FROM support_messages WHERE id = ' . $userMessageId)->fetch();
+    $row = db()->query('SELECT *, UNIX_TIMESTAMP(created_at) AS created_ts FROM support_messages WHERE id = ' . $userMessageId)->fetch();
     json_out(['message' => public_message($row)], 201);
 }
 

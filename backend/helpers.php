@@ -413,6 +413,6 @@ function public_message(array $m): array
         'attachmentPath' => $m['attachment_path'] ?? null,
         'attachmentName' => $m['attachment_name'] ?? null,
         'attachmentType' => $m['attachment_type'] ?? null,
-        'createdAt'      => $m['created_at'],
+        'createdAt'      => gmdate('c', (int) $m['created_ts']),
     ];
 }

@@ -14,7 +14,7 @@ if ($method === 'GET') {
     // id as a tiebreaker: created_at is second-precision, so an auto-reply
     // inserted right after a user's first message can land in the same
     // second and would otherwise sort unpredictably.
-    $stmt = db()->prepare('SELECT * FROM support_messages WHERE user_id = ? ORDER BY created_at ASC, id ASC');
+    $stmt = db()->prepare('SELECT *, UNIX_TIMESTAMP(created_at) AS created_ts FROM support_messages WHERE user_id = ? ORDER BY created_at ASC, id ASC');
     $stmt->execute([$userId]);
     $messages = $stmt->fetchAll();
 
@@ -45,7 +45,7 @@ if ($method === 'POST') {
     db()->prepare('INSERT INTO support_messages (user_id, sender, message, attachment_path, attachment_name, attachment_type) VALUES (?, ?, ?, ?, ?, ?)')
         ->execute([$userId, 'admin', $message, $attachmentPath, $attachmentName, $attachmentType]);
 
-    $row = db()->query('SELECT * FROM support_messages WHERE id = ' . (int) db()->lastInsertId())->fetch();
+    $row = db()->query('SELECT *, UNIX_TIMESTAMP(created_at) AS created_ts FROM support_messages WHERE id = ' . (int) db()->lastInsertId())->fetch();
     json_out(['message' => public_message($row)], 201);
 }
 
