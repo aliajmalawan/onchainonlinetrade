@@ -6,7 +6,7 @@ const PROFIT_PERCENTAGES = {
   30: 0.10,
   60: 0.15,
   180: 0.20,
-  300: 0.25,
+  300: 0.15,
 }
 
 export function getProfitPercentage(duration) {
