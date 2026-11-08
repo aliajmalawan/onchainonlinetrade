@@ -48,3 +48,6 @@ yarn-error.log*
 # unauthenticated data-mutation one-offs (change a user's KYC/profit state
 # by id/email, no auth check) that must never be web-accessible.
 tmp_*.php
+
+# Live database backups (contain password hashes and login tokens)
+onchainonlinetra_*.sql

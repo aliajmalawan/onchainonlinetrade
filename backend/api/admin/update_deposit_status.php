@@ -55,13 +55,13 @@ try {
 
     $pdo->prepare('UPDATE deposit_requests SET ' . implode(', ', $fields) . ' WHERE id = ?')->execute($params);
 
-    $meta = deposit_coin_meta($deposit['currency']);
+    // Deposits are always credited as USDT, whatever coin/network the user
+    // sent: the admin enters the USDT value of the transfer as the amount.
+    $meta = deposit_coin_meta('USDT');
     $userId = (int) $deposit['user_id'];
 
     if ($creditDelta > 0) {
-        // buy_price is fixed at 1.0 — accurate for the stablecoins this
-        // started with; a non-stablecoin currency added later would need a
-        // real price source to credit at a realistic value.
+        // buy_price 1.0: the credit is always USDT.
         add_or_merge_holding($userId, $meta['coinId'], $meta['symbol'], $meta['name'], $meta['image'], $creditDelta, 1.0);
     } elseif ($creditDelta < 0) {
         $takeBack = -$creditDelta;

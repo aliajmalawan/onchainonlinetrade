@@ -28,7 +28,8 @@ function DepositCard({ d }) {
           <span className="history-card-symbol">{d.currency}</span>
           <span className={statusBadgeClass(d.status)}>{statusLabel(d.status)}</span>
         </div>
-        <div className="history-card-stake">{num(d.amount)}</div>
+        {/* Deposits are always credited as USDT, whatever coin was sent. */}
+        <div className="history-card-stake">{num(d.amount)} USDT</div>
       </div>
       <div className="history-card-bottom">
         <div className="history-card-meta">
@@ -78,12 +79,12 @@ export default function DepositHistory() {
       <div className="stat-grid" style={{ marginBottom: 20 }}>
         <div className="panel panel-pad">
           <div className="muted">Total Deposited</div>
-          <div style={{ fontSize: 28, fontWeight: 700 }}>{deposits === null ? '—' : num(totalDeposited)}</div>
+          <div style={{ fontSize: 28, fontWeight: 700 }}>{deposits === null ? '—' : num(totalDeposited) + ' USDT'}</div>
           <div className="muted" style={{ marginTop: 6 }}>Sum of all successful deposit amounts</div>
         </div>
         <div className="panel panel-pad">
           <div className="muted">Pending Deposit</div>
-          <div style={{ fontSize: 28, fontWeight: 700 }}>{deposits === null ? '—' : num(pendingAmount)}</div>
+          <div style={{ fontSize: 28, fontWeight: 700 }}>{deposits === null ? '—' : num(pendingAmount) + ' USDT'}</div>
           <div className="muted" style={{ marginTop: 6 }}>Sum of all pending deposit request amounts</div>
         </div>
       </div>

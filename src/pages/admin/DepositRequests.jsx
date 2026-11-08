@@ -47,7 +47,7 @@ function DepositCard({ d, active, onViewDetails }) {
           <br />
           {d.currency} • Network: {d.network || '—'}
         </div>
-        <div className="history-card-result">{num(d.amount)} {d.currency}</div>
+        <div className="history-card-result">{num(d.amount)} USDT</div>
       </div>
       {d.txId && <div className="history-card-address mono">Ref: {d.txId}</div>}
       <button
@@ -66,7 +66,7 @@ function DepositSlip({ d }) {
     <TransactionSlip
       status={d.status}
       amount={d.amount}
-      currency={d.currency}
+      currency="USDT"
       from={d.userName}
       to="OnChainTrade Wallet"
       badge={<span className={statusBadgeClass(d.status)}>{statusText(d.status)}</span>}
@@ -75,7 +75,8 @@ function DepositSlip({ d }) {
         ['Date & Time', fmtSlipDate(d.createdAt)],
         ['Request ID', slipRef('DEP', d.id)],
         ['User Email', d.userEmail],
-        ['Currency', `${d.currency} • ${d.network || '—'}`],
+        ['Paid With', `${d.currency} • ${d.network || '—'}`],
+        ['Credited As', 'USDT'],
         ['Deposit Address', d.address || '—', true],
         ['Transaction ID', d.txId || '—', true],
       ]}
@@ -98,7 +99,7 @@ function DepositDetailPanel({ d, detailStatus, onDetailStatusChange, detailAmoun
         <div className="slip-controls">
           <div className="slip-controls-title">Update request</div>
           <div className="field">
-            <label>Amount ({d.currency})</label>
+            <label>Amount (USDT)</label>
             <input
               className="input"
               type="number"
@@ -109,7 +110,8 @@ function DepositDetailPanel({ d, detailStatus, onDetailStatusChange, detailAmoun
               placeholder="Enter the amount from the screenshot"
             />
             <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-              The user no longer states an amount — set it here from the transaction screenshot.
+              Enter the USDT value of the transfer from the screenshot
+              {d.currency !== 'USDT' ? ` (the user paid in ${d.currency})` : ''}. It is always credited as USDT.
             </div>
           </div>
           {d.txProofImage && (
@@ -135,7 +137,7 @@ function DepositDetailPanel({ d, detailStatus, onDetailStatusChange, detailAmoun
             </div>
           )}
           <div className="slip-controls-note">
-            Setting this to "Completed" credits {num(parseFloat(detailAmount) || 0)} {d.currency} to the user's holdings.
+            Setting this to "Completed" credits {num(parseFloat(detailAmount) || 0)} USDT to the user's holdings.
           </div>
         </div>
       </div>
