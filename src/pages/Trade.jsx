@@ -2,10 +2,18 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import { getMarkets, getCoinChart, getBinancePrice, SHORT_CHART_RANGES } from '../lib/api'
-import { apiGetPortfolio } from '../lib/backend'
+import { apiGetPortfolio, apiGetTradeTimers } from '../lib/backend'
 import CandleChart from '../components/CandleChart'
 import { usd, num } from '../lib/format'
-import { getProfitPercentage, calculateProfit, updateWallet, settleWinningTrade, settleLosingTrade } from '../lib/trading'
+import {
+  getProfitPercentage,
+  calculateProfit,
+  updateWallet,
+  settleWinningTrade,
+  settleLosingTrade,
+  setProfitTimers,
+  getTradeDurations,
+} from '../lib/trading'
 
 // The shown price has to agree with the trade's actual outcome, not just
 // its direction — a Buy Long that's going to LOSE but still shows the
@@ -47,11 +55,19 @@ export default function Trade() {
   const [tradeResult, setTradeResult] = useState(null)
   const [tradeResultOpen, setTradeResultOpen] = useState(false)
   const [tradeLivePrice, setTradeLivePrice] = useState(null)
+  const [tradeDurations, setTradeDurations] = useState(getTradeDurations)
 
   useEffect(() => {
     refreshUser().catch(() => {})
     getMarkets({ perPage: 100 }).then(setCoins).catch(() => {})
     refreshHoldings()
+    // Timer options and their profit % as set in the admin's Manage Profits.
+    apiGetTradeTimers()
+      .then((timers) => {
+        setProfitTimers(timers)
+        setTradeDurations(getTradeDurations())
+      })
+      .catch(() => {})
   }, [])
 
   // Keeps the coin list / portfolio valuation reasonably fresh. Deliberately
@@ -637,7 +653,7 @@ export default function Trade() {
           <div className="panel panel-pad trade-duration-panel">
             <label style={{ display: 'block', marginBottom: 8 }}>Trade duration</label>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 10 }}>
-              {[30, 60, 180, 300].map((s) => (
+              {tradeDurations.map((s) => (
                 <button
                   key={s}
                   className={'btn btn-sm' + (duration === s ? ' btn-primary' : '')}

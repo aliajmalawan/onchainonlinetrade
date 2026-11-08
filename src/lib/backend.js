@@ -113,6 +113,12 @@ export async function apiSendSupportChat(message, file) {
   return data.message
 }
 
+// --- Trade timers: [{ duration, percent }] (percent as 15 for 15%) ---
+export const apiGetTradeTimers = () => request('/trade_settings.php').then((d) => d.timers)
+export const apiAdminGetTradeTimers = () => request('/admin/trade_settings.php').then((d) => d.timers)
+export const apiAdminUpdateTradeTimers = (timers) =>
+  request('/admin/trade_settings.php', { method: 'POST', body: { timers } }).then((d) => d.timers)
+
 export const apiGetNotifications = () => request('/notifications.php').then((d) => d.notifications)
 export const apiMarkNotificationRead = (id) => request('/notifications.php', { method: 'POST', body: { id } })
 

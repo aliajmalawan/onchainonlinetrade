@@ -21,8 +21,10 @@ if ($method === 'POST') {
     $image         = $b['image'] ?? null;
     $amount        = (float) ($b['amount'] ?? 0);
     $buyPrice      = (float) ($b['buyPrice'] ?? 0);
-    $conditionPct  = (float) ($b['conditionPct'] ?? 0);
     $duration      = isset($b['duration']) ? (int) $b['duration'] : null;
+    // The profit rate comes from the admin's Manage Profits settings for this
+    // timer — never from the request, so a client can't name its own rate.
+    $conditionPct  = trade_profit_pct($duration);
     $openingPrice  = isset($b['openingPrice']) ? (float) $b['openingPrice'] : null;
 
     if ($coinId === '' || $amount <= 0 || $buyPrice <= 0) {
@@ -97,8 +99,8 @@ if ($method === 'DELETE') {
     $b            = body();
     $sellAmt      = isset($b['amount']) ? (float) $b['amount'] : null;
     $sellPrice    = isset($b['price']) ? (float) $b['price'] : null;
-    $conditionPct = (float) ($b['conditionPct'] ?? 0);
     $duration     = isset($b['duration']) ? (int) $b['duration'] : null;
+    $conditionPct = trade_profit_pct($duration); // admin-set rate, not the request's
     $openingPrice = isset($b['openingPrice']) ? (float) $b['openingPrice'] : null;
 
     $stmt = db()->prepare('SELECT * FROM holdings WHERE id = ? AND user_id = ?');

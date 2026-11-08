@@ -19,6 +19,7 @@ const ADMIN_ITEMS = [
   { to: '/account/password', label: 'Update Password' },
   { to: '/admin/overview', label: 'Overview' },
   { to: '/admin/wallets', label: 'Manage Wallets' },
+  { to: '/admin/profits', label: 'Manage Profits' },
   { to: '/admin/deposits', label: 'Deposit Requests' },
   { to: '/admin/withdrawals', label: 'Withdrawals' },
   { to: '/admin/chat', label: 'Live Chat' },

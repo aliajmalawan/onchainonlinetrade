@@ -18,6 +18,7 @@ import Users from './pages/admin/Users'
 import Withdrawals from './pages/admin/Withdrawals'
 import DepositRequests from './pages/admin/DepositRequests'
 import ManageWallets from './pages/admin/ManageWallets'
+import ManageProfits from './pages/admin/ManageProfits'
 import Analytics from './pages/admin/Analytics'
 import Chat from './pages/admin/Chat'
 import UpdatePassword from './pages/account/UpdatePassword'
@@ -107,6 +108,14 @@ export default function App() {
               element={
                 <AdminRoute>
                   <ManageWallets />
+                </AdminRoute>
+              }
+            />
+            <Route
+              path="/admin/profits"
+              element={
+                <AdminRoute>
+                  <ManageProfits />
                 </AdminRoute>
               }
             />

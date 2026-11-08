@@ -1,12 +1,24 @@
 import { apiAddHolding, apiRemoveHolding } from './backend'
 import { num } from './format'
 
-// Fixed profit percentages by trade duration (seconds), as decimals (0.10 = 10%).
-const PROFIT_PERCENTAGES = {
+// Profit percentages by trade duration (seconds), as decimals (0.10 = 10%).
+// These are only the defaults shown until the admin's Manage Profits
+// settings load (setProfitTimers); the backend always settles with its own.
+let PROFIT_PERCENTAGES = {
   30: 0.10,
   60: 0.15,
   180: 0.15,
   300: 0.25,
+}
+
+// timers: [{ duration, percent }] from the API (percent as 15 for 15%).
+export function setProfitTimers(timers) {
+  PROFIT_PERCENTAGES = Object.fromEntries(timers.map((t) => [t.duration, t.percent / 100]))
+}
+
+// Trade timer options in seconds, shortest first.
+export function getTradeDurations() {
+  return Object.keys(PROFIT_PERCENTAGES).map(Number).sort((a, b) => a - b)
 }
 
 export function getProfitPercentage(duration) {

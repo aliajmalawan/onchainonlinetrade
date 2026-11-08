@@ -8,6 +8,7 @@ import {
   apiAdminGetDepositRequests,
   apiAdminGetWithdrawRequests,
   apiAdminGetDepositAddresses,
+  apiAdminGetTradeTimers,
 } from '../lib/backend'
 import StatCard from '../components/StatCard'
 import CoinTickerList from '../components/CoinTickerList'
@@ -130,6 +131,25 @@ function WalletStatIcon() {
   )
 }
 
+function ProfitStatIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="19" y1="5" x2="5" y2="19" />
+      <circle cx="6.5" cy="6.5" r="2.5" />
+      <circle cx="17.5" cy="17.5" r="2.5" />
+    </svg>
+  )
+}
+
+// "10–25%" summary of the trade timers' profit range for the dashboard card.
+function profitRange(timers) {
+  if (!timers.length) return '—'
+  const pcts = timers.map((t) => t.percent)
+  const lo = Math.min(...pcts)
+  const hi = Math.max(...pcts)
+  return lo === hi ? `${lo}%` : `${lo}–${hi}%`
+}
+
 const COIN_TABS = [
   { key: 'popular', label: 'Popular Coins' },
   { key: 'gainers', label: 'Top Gainers' },
@@ -146,6 +166,7 @@ export default function Dashboard() {
   const [depositCount, setDepositCount] = useState(null)
   const [pendingCount, setPendingCount] = useState(null)
   const [walletCount, setWalletCount] = useState(null)
+  const [profitSummary, setProfitSummary] = useState(null)
   const [coinTab, setCoinTab] = useState('popular')
   const [hideValue, setHideValue] = useState(false)
 
@@ -195,6 +216,9 @@ export default function Dashboard() {
     apiAdminGetDepositAddresses()
       .then((rows) => setWalletCount(rows.length))
       .catch(() => setWalletCount(0))
+    apiAdminGetTradeTimers()
+      .then((timers) => setProfitSummary(profitRange(timers)))
+      .catch(() => setProfitSummary('—'))
   }, [isAdmin])
 
   // Value the portfolio against live prices.
@@ -341,6 +365,13 @@ export default function Dashboard() {
             to="/admin/wallets"
             icon={<WalletStatIcon />}
             accent="purple"
+          />
+          <StatCard
+            label="MANAGE PROFITS"
+            value={profitSummary === null ? '—' : profitSummary}
+            to="/admin/profits"
+            icon={<ProfitStatIcon />}
+            accent="red"
           />
         </div>
 

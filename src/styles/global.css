@@ -632,6 +632,33 @@ h1, h2, h3, h4 {
    specific card that triggered it, instead of always at the page bottom. */
 .wd-detail-panel { grid-column: 1 / -1; margin: 0; }
 
+/* Admin Manage Profits: one row per trade timer */
+.profit-rows { display: grid; gap: 0; }
+.profit-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--line);
+}
+.profit-row:first-child { padding-top: 0; }
+.profit-row-timer { min-width: 0; flex: 1 1 160px; }
+.profit-row-title { font-weight: 600; font-size: 15px; margin-bottom: 2px; }
+.profit-row-input { position: relative; flex: 0 0 110px; }
+.profit-row-input .input { padding-right: 32px; text-align: right; font-weight: 600; }
+.profit-row-input.has-error .input { border-color: #f3c6c6; }
+.profit-row-suffix {
+  position: absolute;
+  right: 12px; top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  font-weight: 600;
+  pointer-events: none;
+}
+.profit-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 16px; }
+
 /* Admin deposit request slip (receipt-style summary) */
 /* Detail panel layout: slip on the left, admin controls on the right.
    Wraps by the panel's own width (the panel is often narrower than the

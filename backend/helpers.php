@@ -226,6 +226,57 @@ function apply_trade_condition_price(float $basePrice, float $conditionPct, bool
 }
 
 /** Record a withdrawal row for a user. */
+/** Trade timer options (seconds) and their starting profit rates (0.10 = 10%). */
+const DEFAULT_TRADE_PROFITS = [30 => 0.10, 60 => 0.15, 180 => 0.15, 300 => 0.25];
+
+/**
+ * Profit rate per trade timer, editable by admins (Manage Profits). Created
+ * and seeded with DEFAULT_TRADE_PROFITS on first use, so an existing install
+ * needs no manual migration; INSERT IGNORE never overwrites an admin's edit.
+ */
+function ensure_trade_profit_settings(): void
+{
+    static $done = false;
+    if ($done) return;
+    db()->exec("CREATE TABLE IF NOT EXISTS trade_profit_settings (
+        duration   INT PRIMARY KEY,
+        profit_pct DECIMAL(6,4) NOT NULL,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB");
+    $seed = db()->prepare('INSERT IGNORE INTO trade_profit_settings (duration, profit_pct) VALUES (?, ?)');
+    foreach (DEFAULT_TRADE_PROFITS as $duration => $pct) {
+        $seed->execute([$duration, $pct]);
+    }
+    $done = true;
+}
+
+/** [duration seconds => profit rate], shortest timer first. */
+function trade_profits(): array
+{
+    ensure_trade_profit_settings();
+    $out = [];
+    foreach (db()->query('SELECT duration, profit_pct FROM trade_profit_settings ORDER BY duration')->fetchAll() as $r) {
+        $out[(int) $r['duration']] = (float) $r['profit_pct'];
+    }
+    return $out;
+}
+
+/** The profit rate a trade on this timer earns — 0 for an unknown timer. */
+function trade_profit_pct(?int $duration): float
+{
+    return $duration === null ? 0.0 : (trade_profits()[$duration] ?? 0.0);
+}
+
+/** Timers in API shape: [{duration, percent}], percent as 15 for 15%. */
+function public_trade_profits(): array
+{
+    $out = [];
+    foreach (trade_profits() as $duration => $pct) {
+        $out[] = ['duration' => $duration, 'percent' => round($pct * 100, 2)];
+    }
+    return $out;
+}
+
 /**
  * Platform transaction ID for a deposit/withdraw request: a 2-letter prefix
  * plus 14 digits — the request date (YYMMDD) and 8 random digits, e.g.
