@@ -5,6 +5,9 @@ require_admin();
 
 if ($_SERVER['REQUEST_METHOD'] !== 'GET') json_err('Method not allowed', 405);
 
+// Older requests may have no transaction ID yet — give them one.
+backfill_tx_ids('WD', 'withdraw_history');
+
 $stmt = db()->prepare(
     'SELECT w.*, u.name AS user_name, u.email AS user_email
      FROM withdraw_history w

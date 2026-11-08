@@ -10,8 +10,14 @@ export const fmtSlipDate = (t) => {
   return `${date}, ${time}`
 }
 
-// "DEP-000012" / "WD-000012" style request reference.
-export const slipRef = (prefix, id) => `${prefix}-` + String(id).padStart(6, '0')
+// Request ID: prefix + request date (YYMMDD) + the request's row id padded to
+// 6 digits, e.g. DR260818000006. Unique because the row id is, and stable for
+// every viewer: the date is read straight from the stored "YYYY-MM-DD..."
+// value rather than converted to the viewer's timezone.
+export const slipRef = (prefix, id, createdAt) => {
+  const ymd = /^\d{4}-\d{2}-\d{2}/.test(String(createdAt)) ? String(createdAt).slice(2, 10).replace(/-/g, '') : ''
+  return prefix + ymd + String(id).padStart(6, '0')
+}
 
 function SlipStatusIcon({ status }) {
   if (status === 'completed') {

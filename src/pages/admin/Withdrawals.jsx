@@ -61,13 +61,12 @@ function WithdrawCard({ w, active, onViewDetails }) {
 function WithdrawSlip({ w }) {
   const rows = [
     ['Date & Time', fmtSlipDate(w.createdAt)],
-    ['Request ID', slipRef('WD', w.id)],
+    ['Request ID', slipRef('WR', w.id, w.createdAt)],
     ['User Email', w.userEmail],
     ['Currency', `${w.currency} • ${w.network || '—'}`],
     ['Wallet Address', w.address || '—', true],
   ]
   if (w.fee != null) rows.push(['Fee', `${num(w.fee)} ${w.currency}`])
-  if (w.txId) rows.push(['Transaction ID', w.txId, true])
 
   return (
     <TransactionSlip
@@ -77,7 +76,7 @@ function WithdrawSlip({ w }) {
       from="OnChainTrade Wallet"
       to={w.userName}
       badge={<span className={statusBadgeClass(w.status)}>{statusText(w.status)}</span>}
-      fileName={`OnChainTrade-${slipRef('WD', w.id)}.png`}
+      fileName={`OnChainTrade-${slipRef('WR', w.id, w.createdAt)}.png`}
       rows={rows}
     />
   )

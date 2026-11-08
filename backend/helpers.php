@@ -226,8 +226,41 @@ function apply_trade_condition_price(float $basePrice, float $conditionPct, bool
 }
 
 /** Record a withdrawal row for a user. */
+/**
+ * Platform transaction ID for a deposit/withdraw request: a 2-letter prefix
+ * plus 14 digits — the request date (YYMMDD) and 8 random digits, e.g.
+ * DP26110848213957. Re-rolled until it is unused in $table.
+ */
+function generate_tx_id(string $prefix, string $table, ?int $timestamp = null): string
+{
+    $check = db()->prepare("SELECT 1 FROM `$table` WHERE tx_id = ? LIMIT 1");
+    do {
+        $id = $prefix . date('ymd', $timestamp ?? time()) . str_pad((string) random_int(0, 99999999), 8, '0', STR_PAD_LEFT);
+        $check->execute([$id]);
+    } while ($check->fetchColumn());
+    return $id;
+}
+
+/**
+ * Gives every request in $table whose transaction ID is missing or not in
+ * the platform format (older rows, blank ones, or a reference the user typed
+ * in by hand) a generated one, dated by its created_at.
+ */
+function backfill_tx_ids(string $prefix, string $table): void
+{
+    $rows = db()->query(
+        "SELECT id, UNIX_TIMESTAMP(created_at) AS ts FROM `$table`
+         WHERE tx_id IS NULL OR tx_id NOT REGEXP '^{$prefix}[0-9]{14}\$'"
+    )->fetchAll();
+    $update = db()->prepare("UPDATE `$table` SET tx_id = ? WHERE id = ?");
+    foreach ($rows as $r) {
+        $update->execute([generate_tx_id($prefix, $table, (int) $r['ts']), $r['id']]);
+    }
+}
+
 function log_withdraw(int $userId, float $amount, string $currency = 'USD', string $network = '', string $address = '', ?float $fee = null, ?string $txId = null, string $status = 'pending'): void
 {
+    if ($txId === null || trim($txId) === '') $txId = generate_tx_id('WD', 'withdraw_history');
     db()->prepare(
         'INSERT INTO withdraw_history (user_id, amount, currency, network, address, fee, tx_id, status)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
@@ -259,6 +292,7 @@ function deposit_coin_meta(string $currency): array
 /** Record a deposit request row for a user. */
 function log_deposit(int $userId, float $amount, string $currency = 'USDT', string $network = '', string $address = '', ?string $txId = null, string $status = 'pending', ?string $txProofImage = null): int
 {
+    if ($txId === null || trim($txId) === '') $txId = generate_tx_id('DP', 'deposit_requests');
     db()->prepare(
         'INSERT INTO deposit_requests (user_id, amount, currency, network, address, tx_id, tx_proof_image, status)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)'

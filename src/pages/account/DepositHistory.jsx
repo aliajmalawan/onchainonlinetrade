@@ -38,7 +38,6 @@ function DepositCard({ d }) {
           Network: {d.network || '—'}
         </div>
       </div>
-      {d.txId && <div className="history-card-address mono">Ref: {d.txId}</div>}
     </div>
   )
 }

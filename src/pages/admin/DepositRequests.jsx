@@ -49,7 +49,6 @@ function DepositCard({ d, active, onViewDetails }) {
         </div>
         <div className="history-card-result">{num(d.amount)} USDT</div>
       </div>
-      {d.txId && <div className="history-card-address mono">Ref: {d.txId}</div>}
       <button
         className={'btn btn-sm' + (active ? ' btn-primary' : '')}
         style={{ width: '100%', marginTop: 12 }}
@@ -70,15 +69,14 @@ function DepositSlip({ d }) {
       from={d.userName}
       to="OnChainTrade Wallet"
       badge={<span className={statusBadgeClass(d.status)}>{statusText(d.status)}</span>}
-      fileName={`OnChainTrade-${slipRef('DEP', d.id)}.png`}
+      fileName={`OnChainTrade-${slipRef('DR', d.id, d.createdAt)}.png`}
       rows={[
         ['Date & Time', fmtSlipDate(d.createdAt)],
-        ['Request ID', slipRef('DEP', d.id)],
+        ['Request ID', slipRef('DR', d.id, d.createdAt)],
         ['User Email', d.userEmail],
         ['Paid With', `${d.currency} • ${d.network || '—'}`],
         ['Credited As', 'USDT'],
         ['Deposit Address', d.address || '—', true],
-        ['Transaction ID', d.txId || '—', true],
       ]}
     />
   )
