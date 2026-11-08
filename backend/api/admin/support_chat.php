@@ -14,7 +14,10 @@ if ($method === 'GET') {
     // id as a tiebreaker: created_at is second-precision, so an auto-reply
     // inserted right after a user's first message can land in the same
     // second and would otherwise sort unpredictably.
-    $stmt = db()->prepare('SELECT *, UNIX_TIMESTAMP(created_at) AS created_ts FROM support_messages WHERE user_id = ? ORDER BY created_at ASC, id ASC');
+    // seen_ts: when the customer first saw each support reply (per-message
+    // sent/seen ticks on the admin side).
+    ensure_message_seen_column();
+    $stmt = db()->prepare('SELECT *, UNIX_TIMESTAMP(created_at) AS created_ts, UNIX_TIMESTAMP(seen_at) AS seen_ts FROM support_messages WHERE user_id = ? ORDER BY created_at ASC, id ASC');
     $stmt->execute([$userId]);
     $messages = $stmt->fetchAll();
 

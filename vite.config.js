@@ -10,12 +10,12 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api': {
-        target: 'http://localhost/cryptotrack/backend',
+        target: 'http://localhost/cryptochain/backend',
         changeOrigin: true,
         secure: false,
       },
       '/uploads': {
-        target: 'http://localhost/cryptotrack/backend',
+        target: 'http://localhost/cryptochain/backend',
         changeOrigin: true,
         secure: false,
       },

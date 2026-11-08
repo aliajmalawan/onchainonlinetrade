@@ -24,9 +24,12 @@ if (!$withdraw) json_err('Withdrawal request not found.', 404);
 // pending — "completed" doesn't need to touch the balance again, the funds
 // are already gone. But rejecting one must hand that reservation back,
 // otherwise the user permanently loses funds for a withdrawal that never
-// went out. Only refund on the transition into "failed" (never on a later
-// re-save), so re-selecting "failed" can't double-credit.
-$newlyFailed = $status === 'failed' && $withdraw['status'] !== 'failed';
+// went out. The refund is held only while the request is "failed": refund on
+// the move into "failed", take it back again on a move out of it (to pending
+// or completed), and never touch the balance on a re-save — so no sequence
+// of status changes can refund twice or pay out a refunded withdrawal.
+$newlyFailed   = $status === 'failed' && $withdraw['status'] !== 'failed';
+$leavingFailed = $status !== 'failed' && $withdraw['status'] === 'failed';
 
 $fields = ['status = ?'];
 $params = [$status];
@@ -69,6 +72,31 @@ try {
                 (int) $withdraw['user_id'], $meta['coinId'], $meta['symbol'], $meta['name'], $meta['image'],
                 (float) $withdraw['amount'], 1.0
             );
+        }
+    } elseif ($leavingFailed) {
+        // Re-reserve the amount that the earlier rejection refunded.
+        $takeBack = (float) $withdraw['amount'];
+        $symbol = strtoupper($withdraw['currency']);
+        $stmt = $pdo->prepare('SELECT * FROM holdings WHERE user_id = ? AND symbol = ? FOR UPDATE');
+        $stmt->execute([(int) $withdraw['user_id'], $symbol]);
+        $existing = $stmt->fetch();
+        $currentAmount = $existing ? (float) $existing['amount'] : 0.0;
+
+        // The user may already have spent the refund — refuse rather than
+        // leave a negative balance.
+        if ($currentAmount + 1e-9 < $takeBack) {
+            $pdo->rollBack();
+            json_err(
+                'Cannot re-reserve ' . $takeBack . ' ' . $symbol . ' for this withdrawal: the user only holds '
+                . $currentAmount . ' ' . $symbol . ' now.',
+                409
+            );
+        }
+
+        if ($currentAmount - $takeBack > 1e-9) {
+            $pdo->prepare('UPDATE holdings SET amount = ? WHERE id = ?')->execute([$currentAmount - $takeBack, $existing['id']]);
+        } else {
+            $pdo->prepare('DELETE FROM holdings WHERE id = ?')->execute([$existing['id']]);
         }
     }
 

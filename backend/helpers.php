@@ -403,6 +403,21 @@ function handle_chat_attachment(): array
 }
 
 /** Shape a support-chat message row for the client. */
+/**
+ * support_messages.seen_at: when the customer first had a support reply on
+ * screen (NULL = not seen yet; only set on sender='admin' rows). Added on
+ * first use so an existing install needs no manual migration.
+ */
+function ensure_message_seen_column(): void
+{
+    static $done = false;
+    if ($done) return;
+    if (!db()->query("SHOW COLUMNS FROM support_messages LIKE 'seen_at'")->fetch()) {
+        db()->exec('ALTER TABLE support_messages ADD COLUMN seen_at TIMESTAMP NULL DEFAULT NULL');
+    }
+    $done = true;
+}
+
 function public_message(array $m): array
 {
     return [
@@ -414,5 +429,6 @@ function public_message(array $m): array
         'attachmentName' => $m['attachment_name'] ?? null,
         'attachmentType' => $m['attachment_type'] ?? null,
         'createdAt'      => gmdate('c', (int) $m['created_ts']),
+        'seenAt'         => !empty($m['seen_ts']) ? gmdate('c', (int) $m['seen_ts']) : null,
     ];
 }

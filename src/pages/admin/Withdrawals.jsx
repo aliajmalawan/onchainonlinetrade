@@ -2,6 +2,7 @@ import { Fragment, useEffect, useMemo, useState } from 'react'
 import { apiAdminGetWithdrawRequests, apiAdminUpdateWithdrawStatus } from '../../lib/backend'
 import { num } from '../../lib/format'
 import StatCard from '../../components/StatCard'
+import TransactionSlip, { SlipStatusPicker, fmtSlipDate, slipRef } from '../../components/TransactionSlip'
 
 const initials = (name) =>
   (name || '')
@@ -11,19 +12,10 @@ const initials = (name) =>
     .map((w) => w[0]?.toUpperCase())
     .join('') || '?'
 
-const statusLabel = (status) => {
-  if (status === 'completed') return 'Successful'
-  if (status === 'failed') return 'Reject'
-  return status
-}
-
 const statusText = (status) => (status === 'completed' ? 'Completed' : status === 'failed' ? 'Rejected' : 'Pending')
 
 const statusBadgeClass = (status) =>
   'badge ' + (status === 'completed' ? 'badge-wd-completed' : status === 'failed' ? 'badge-wd-rejected' : 'badge-wd-pending')
-
-const fmtDate = (t) =>
-  new Date(t).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 
 // Short "Aug 13, 2026 · 15:42" style stamp used on the history card.
 const fmtCardDate = (t) => {
@@ -66,6 +58,31 @@ function WithdrawCard({ w, active, onViewDetails }) {
   )
 }
 
+function WithdrawSlip({ w }) {
+  const rows = [
+    ['Date & Time', fmtSlipDate(w.createdAt)],
+    ['Request ID', slipRef('WD', w.id)],
+    ['User Email', w.userEmail],
+    ['Currency', `${w.currency} • ${w.network || '—'}`],
+    ['Wallet Address', w.address || '—', true],
+  ]
+  if (w.fee != null) rows.push(['Fee', `${num(w.fee)} ${w.currency}`])
+  if (w.txId) rows.push(['Transaction ID', w.txId, true])
+
+  return (
+    <TransactionSlip
+      status={w.status}
+      amount={w.amount}
+      currency={w.currency}
+      from="OnChainTrade Wallet"
+      to={w.userName}
+      badge={<span className={statusBadgeClass(w.status)}>{statusText(w.status)}</span>}
+      fileName={`OnChainTrade-${slipRef('WD', w.id)}.png`}
+      rows={rows}
+    />
+  )
+}
+
 function WithdrawDetailPanel({ w, detailStatus, onDetailStatusChange, onSave, busy, error }) {
   return (
     <div className="panel panel-pad wd-detail-panel">
@@ -74,57 +91,23 @@ function WithdrawDetailPanel({ w, detailStatus, onDetailStatusChange, onSave, bu
 
       {error && <div className="alert alert-error" style={{ marginTop: 16 }}>{error}</div>}
 
-      <div className="row" style={{ gap: 24, flexWrap: 'wrap', marginTop: 16 }}>
-        <div style={{ flex: '1 1 320px' }}>
-          <div className="field">
-            <label>User</label>
-            <div>{w.userName}</div>
-            <div className="muted" style={{ fontSize: 12 }}>{w.userEmail}</div>
-          </div>
-          <div className="field">
-            <label>Requested date</label>
-            <div>{fmtDate(w.createdAt)}</div>
-          </div>
-          <div className="field">
-            <label>Amount</label>
-            <div>{num(w.amount)} {w.currency}</div>
-          </div>
-          <div className="field">
-            <label>Status</label>
-            <div>{statusLabel(w.status)}</div>
-          </div>
-        </div>
+      <div className="slip-detail-grid">
+        {/* Shows the saved request only — it updates once Save succeeds. */}
+        <WithdrawSlip w={w} />
 
-        <div style={{ flex: '1 1 320px' }}>
-          <div className="field">
-            <label>Currency</label>
-            <div>{w.currency}</div>
-          </div>
-          <div className="field">
-            <label>Network / Wallet</label>
-            <div>{w.network || w.address || '—'}</div>
-          </div>
-          <div className="field">
-            <label>Network</label>
-            <div>{w.network || '—'}</div>
-          </div>
-          <div className="field">
-            <label>Wallet address</label>
-            <div className="mono" style={{ wordBreak: 'break-all' }}>{w.address || '—'}</div>
-          </div>
-          <div className="field">
-            <label>Status</label>
-            <select className="input" value={detailStatus} onChange={(e) => onDetailStatusChange(e.target.value)}>
-              <option value="pending">pending</option>
-              <option value="completed">completed</option>
-              <option value="failed">Reject</option>
-            </select>
-          </div>
-          <div className="field" style={{ width: '100%' }}>
-            <button className="btn btn-primary" onClick={onSave} disabled={busy}>
-              {busy ? 'Saving…' : 'Save details'}
-            </button>
-          </div>
+        <div className="slip-controls">
+          <div className="slip-controls-title">Update status</div>
+          <div className="slip-controls-sub">Choose a status, then save to apply it.</div>
+          <SlipStatusPicker value={detailStatus} onChange={onDetailStatusChange} />
+          <button className="btn btn-primary btn-block" onClick={onSave} disabled={busy || detailStatus === w.status}>
+            {busy ? 'Saving…' : 'Save status'}
+          </button>
+          {detailStatus !== w.status && (
+            <div className="slip-controls-note" style={{ color: 'var(--amber)' }}>
+              Unsaved changes — press Save status to apply them.
+            </div>
+          )}
+          <div className="slip-controls-note">Rejecting refunds the reserved amount to the user's wallet.</div>
         </div>
       </div>
     </div>

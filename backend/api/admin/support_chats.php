@@ -12,8 +12,11 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') json_err('Method not allowed', 405);
 // message's auto-reply is inserted in the very same request (so often the
 // very same second), which would otherwise make "the latest message" an
 // ambiguous tie; id is unique and strictly insertion-ordered.
+ensure_message_seen_column();
+
 $rows = db()->query("
     SELECT u.id, u.name, u.email,
+           m.seen_at IS NOT NULL AS last_seen,
            m.message         AS last_message,
            m.attachment_type AS last_attachment_type,
            m.sender          AS last_sender,
@@ -45,6 +48,8 @@ json_out(['conversations' => array_map(function ($r) {
         'lastMessage'         => $r['last_message'],
         'lastAttachmentType'  => $r['last_attachment_type'],
         'lastSender'          => $r['last_sender'],
+        // Only meaningful when lastSender is 'admin': has the customer seen it?
+        'lastSeenByUser'      => (bool) $r['last_seen'],
         'lastAt'              => gmdate('c', (int) $r['last_ts']),
         'unreadCount'         => (int) $r['unread_count'],
         'online'              => (bool) $r['is_online'],

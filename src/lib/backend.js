@@ -89,7 +89,10 @@ export const apiUpdatePassword = (currentPassword, newPassword) => request('/upd
 export const apiUpdateAccount  = (name, email, phone) => request('/update_account.php', { method: 'POST', body: { name, email, phone } }).then((d) => d.user)
 
 // --- Support chat ---
-export const apiGetSupportChat = () => request('/support_chat.php').then((d) => d.messages)
+// seen: true only while the chat is actually on screen — marks support's
+// replies as seen by the customer (drives the admin's read ticks).
+export const apiGetSupportChat = (seen = false) =>
+  request('/support_chat.php' + (seen ? '?seen=1' : '')).then((d) => d.messages)
 
 // Plain text keeps using the JSON path; an attachment switches to
 // multipart/form-data (same endpoint either way).

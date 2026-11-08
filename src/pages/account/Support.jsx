@@ -23,13 +23,20 @@ export default function Support() {
   const [messages, setMessages] = useState([])
 
   function load() {
-    apiGetSupportChat().then(setMessages).catch(() => {})
+    // A poll from a background tab must not tell support their reply was seen.
+    apiGetSupportChat(document.visibilityState === 'visible').then(setMessages).catch(() => {})
   }
 
   useEffect(() => {
     load()
     const id = setInterval(load, POLL_MS)
-    return () => clearInterval(id)
+    // Coming back to the tab marks new replies as seen right away.
+    const onVisible = () => document.visibilityState === 'visible' && load()
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(id)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
   }, [])
 
   async function send(text, file) {

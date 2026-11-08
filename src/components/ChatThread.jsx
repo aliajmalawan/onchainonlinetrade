@@ -69,6 +69,12 @@ const CheckTicksIcon = () => (
   </svg>
 )
 
+const CheckTickIcon = () => (
+  <svg viewBox="0 0 18 12" width="14" height="10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 6l3 3 6-7" />
+  </svg>
+)
+
 const FileIcon = () => (
   <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
@@ -90,6 +96,8 @@ const EMOJIS = ['😀', '😂', '😊', '😍', '🙏', '👍', '👌', '🔥', 
 // beside the other party's bubbles (support icon, or the user's initials on
 // the admin side). brandBackground: shows the faint coin/candlestick
 // watermark behind the thread (only on the branded customer-facing page).
+// showSeen (admin side): own messages show a single "sent" tick, or a
+// highlighted double tick plus the time the other party saw it (m.seenAt).
 export default function ChatThread({
   messages,
   mineSender,
@@ -97,6 +105,7 @@ export default function ChatThread({
   placeholder = 'Type a message…',
   theirsAvatar,
   brandBackground = false,
+  showSeen = false,
 }) {
   const [text, setText] = useState('')
   const [pendingFile, setPendingFile] = useState(null)
@@ -200,6 +209,7 @@ export default function ChatThread({
           }
           const m = item.data
           const mine = m.sender === mineSender
+          const seen = showSeen && mine && !!m.seenAt
           return (
             <div key={item.key} className={'chat-msg-row' + (mine ? ' mine' : ' theirs')}>
               {!mine && <span className="chat-msg-avatar">{theirsAvatar}</span>}
@@ -218,8 +228,18 @@ export default function ChatThread({
                 {m.message && <div className={m.attachmentPath ? 'chat-caption' : undefined}>{m.message}</div>}
                 <div className="chat-meta">
                   {fmtTime(m.createdAt)}
-                  {mine && <CheckTicksIcon />}
+                  {mine && !showSeen && <CheckTicksIcon />}
+                  {mine && showSeen && (
+                    <span className={'chat-ticks' + (seen ? ' seen' : '')} title={seen ? 'Seen' : 'Sent'}>
+                      {seen ? <CheckTicksIcon /> : <CheckTickIcon />}
+                    </span>
+                  )}
                 </div>
+                {mine && showSeen && (
+                  <div className={'chat-seen-time' + (seen ? ' seen' : '')}>
+                    {seen ? 'Seen · ' + fmtTime(m.seenAt) : 'Not seen yet'}
+                  </div>
+                )}
               </div>
             </div>
           )

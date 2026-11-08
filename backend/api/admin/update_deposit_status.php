@@ -22,10 +22,17 @@ $stmt->execute([$depositId]);
 $deposit = $stmt->fetch();
 if (!$deposit) json_err('Deposit request not found.', 404);
 
-// Only credit holdings the moment a request first becomes completed —
-// never on a later re-save, so re-selecting "completed" can't double-credit.
-$newlyCompleted = $status === 'completed' && $deposit['status'] !== 'completed';
-if ($newlyCompleted && ($amount ?? (float) $deposit['amount']) <= 0) {
+// The user's holding carries a deposit's amount only while the request is
+// "completed". Crediting the difference between what is credited now and
+// what should be credited after this save means: rejecting (or re-opening)
+// a completed request takes the amount back, re-saving "completed" never
+// double-credits, and editing a completed amount only moves the difference.
+$wasCompleted   = $deposit['status'] === 'completed';
+$creditedBefore = $wasCompleted ? (float) $deposit['amount'] : 0.0;
+$creditedAfter  = $status === 'completed' ? ($amount ?? (float) $deposit['amount']) : 0.0;
+$creditDelta    = $creditedAfter - $creditedBefore;
+
+if ($status === 'completed' && $creditedAfter <= 0) {
     json_err('Enter the deposit amount before marking this request completed.', 400);
 }
 
@@ -48,20 +55,38 @@ try {
 
     $pdo->prepare('UPDATE deposit_requests SET ' . implode(', ', $fields) . ' WHERE id = ?')->execute($params);
 
-    if ($newlyCompleted) {
+    $meta = deposit_coin_meta($deposit['currency']);
+    $userId = (int) $deposit['user_id'];
+
+    if ($creditDelta > 0) {
         // buy_price is fixed at 1.0 — accurate for the stablecoins this
         // started with; a non-stablecoin currency added later would need a
         // real price source to credit at a realistic value.
-        $meta = deposit_coin_meta($deposit['currency']);
-        add_or_merge_holding(
-            (int) $deposit['user_id'],
-            $meta['coinId'],
-            $meta['symbol'],
-            $meta['name'],
-            $meta['image'],
-            (float) $deposit['amount'],
-            1.0
-        );
+        add_or_merge_holding($userId, $meta['coinId'], $meta['symbol'], $meta['name'], $meta['image'], $creditDelta, 1.0);
+    } elseif ($creditDelta < 0) {
+        $takeBack = -$creditDelta;
+        $stmt = $pdo->prepare('SELECT * FROM holdings WHERE user_id = ? AND coin_id = ? FOR UPDATE');
+        $stmt->execute([$userId, $meta['coinId']]);
+        $holding = $stmt->fetch();
+        $currentAmount = $holding ? (float) $holding['amount'] : 0.0;
+
+        // The user may already have traded/withdrawn the credited funds —
+        // refuse rather than leave a negative balance.
+        if ($currentAmount + 1e-9 < $takeBack) {
+            $pdo->rollBack();
+            json_err(
+                'Cannot take back ' . $takeBack . ' ' . strtoupper($meta['symbol']) . ': the user only holds '
+                . $currentAmount . ' ' . strtoupper($meta['symbol']) . ' now.',
+                409
+            );
+        }
+
+        if ($currentAmount - $takeBack > 1e-9) {
+            $pdo->prepare('UPDATE holdings SET amount = ? WHERE id = ?')->execute([$currentAmount - $takeBack, $holding['id']]);
+        } else {
+            $pdo->prepare('DELETE FROM holdings WHERE id = ?')->execute([$holding['id']]);
+        }
+        log_trade($userId, 'remove', $meta['coinId'], $meta['symbol'], $meta['name'], $takeBack, 1.0);
     }
 
     $pdo->commit();

@@ -5,6 +5,7 @@ const ROOT = (import.meta.env.VITE_BACKEND_URL || '/api').replace(/\/api$/, '')
 const qrUrl = (path) => (path ? ROOT + '/' + path.replace(/^\//, '') : null)
 import { num } from '../../lib/format'
 import StatCard from '../../components/StatCard'
+import TransactionSlip, { SlipStatusPicker, fmtSlipDate, slipRef } from '../../components/TransactionSlip'
 
 const initials = (name) =>
   (name || '')
@@ -14,19 +15,10 @@ const initials = (name) =>
     .map((w) => w[0]?.toUpperCase())
     .join('') || '?'
 
-const statusLabel = (status) => {
-  if (status === 'completed') return 'Successful'
-  if (status === 'failed') return 'Reject'
-  return status
-}
-
 const statusText = (status) => (status === 'completed' ? 'Completed' : status === 'failed' ? 'Rejected' : 'Pending')
 
 const statusBadgeClass = (status) =>
   'badge ' + (status === 'completed' ? 'badge-wd-completed' : status === 'failed' ? 'badge-wd-rejected' : 'badge-wd-pending')
-
-const fmtDate = (t) =>
-  new Date(t).toLocaleString('en-US', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 
 // Short "Aug 13, 2026 · 15:42" style stamp used on the history card.
 const fmtCardDate = (t) => {
@@ -69,6 +61,28 @@ function DepositCard({ d, active, onViewDetails }) {
   )
 }
 
+function DepositSlip({ d }) {
+  return (
+    <TransactionSlip
+      status={d.status}
+      amount={d.amount}
+      currency={d.currency}
+      from={d.userName}
+      to="OnChainTrade Wallet"
+      badge={<span className={statusBadgeClass(d.status)}>{statusText(d.status)}</span>}
+      fileName={`OnChainTrade-${slipRef('DEP', d.id)}.png`}
+      rows={[
+        ['Date & Time', fmtSlipDate(d.createdAt)],
+        ['Request ID', slipRef('DEP', d.id)],
+        ['User Email', d.userEmail],
+        ['Currency', `${d.currency} • ${d.network || '—'}`],
+        ['Deposit Address', d.address || '—', true],
+        ['Transaction ID', d.txId || '—', true],
+      ]}
+    />
+  )
+}
+
 function DepositDetailPanel({ d, detailStatus, onDetailStatusChange, detailAmount, onDetailAmountChange, onSave, busy, error }) {
   return (
     <div className="panel panel-pad wd-detail-panel">
@@ -77,17 +91,12 @@ function DepositDetailPanel({ d, detailStatus, onDetailStatusChange, detailAmoun
 
       {error && <div className="alert alert-error" style={{ marginTop: 16 }}>{error}</div>}
 
-      <div className="row" style={{ gap: 24, flexWrap: 'wrap', marginTop: 16 }}>
-        <div style={{ flex: '1 1 320px' }}>
-          <div className="field">
-            <label>User</label>
-            <div>{d.userName}</div>
-            <div className="muted" style={{ fontSize: 12 }}>{d.userEmail}</div>
-          </div>
-          <div className="field">
-            <label>Requested date</label>
-            <div>{fmtDate(d.createdAt)}</div>
-          </div>
+      <div className="slip-detail-grid">
+        {/* Shows the saved request only — it updates once Save succeeds. */}
+        <DepositSlip d={d} />
+
+        <div className="slip-controls">
+          <div className="slip-controls-title">Update request</div>
           <div className="field">
             <label>Amount ({d.currency})</label>
             <input
@@ -103,29 +112,6 @@ function DepositDetailPanel({ d, detailStatus, onDetailStatusChange, detailAmoun
               The user no longer states an amount — set it here from the transaction screenshot.
             </div>
           </div>
-          <div className="field">
-            <label>Status</label>
-            <div>{statusLabel(d.status)}</div>
-          </div>
-        </div>
-
-        <div style={{ flex: '1 1 320px' }}>
-          <div className="field">
-            <label>Currency</label>
-            <div>{d.currency}</div>
-          </div>
-          <div className="field">
-            <label>Network</label>
-            <div>{d.network || '—'}</div>
-          </div>
-          <div className="field">
-            <label>Deposit address shown to user</label>
-            <div className="mono" style={{ wordBreak: 'break-all' }}>{d.address || '—'}</div>
-          </div>
-          <div className="field">
-            <label>Transaction ID / Reference</label>
-            <div className="mono" style={{ wordBreak: 'break-all' }}>{d.txId || '—'}</div>
-          </div>
           {d.txProofImage && (
             <div className="field">
               <label>Transaction Screenshot</label>
@@ -133,26 +119,23 @@ function DepositDetailPanel({ d, detailStatus, onDetailStatusChange, detailAmoun
                 <img
                   src={qrUrl(d.txProofImage)}
                   alt="Transaction proof"
-                  style={{ maxWidth: 220, borderRadius: 8, border: '1px solid var(--line)' }}
+                  style={{ maxWidth: 180, borderRadius: 8, border: '1px solid var(--line)' }}
                 />
               </a>
             </div>
           )}
-          <div className="field">
-            <label>Status</label>
-            <select className="input" value={detailStatus} onChange={(e) => onDetailStatusChange(e.target.value)}>
-              <option value="pending">pending</option>
-              <option value="completed">completed</option>
-              <option value="failed">Reject</option>
-            </select>
-            <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-              Setting this to "completed" credits {num(parseFloat(detailAmount) || 0)} {d.currency} to the user's holdings.
+          <label className="muted" style={{ display: 'block', fontSize: 13, marginBottom: 6 }}>Status</label>
+          <SlipStatusPicker value={detailStatus} onChange={onDetailStatusChange} />
+          <button className="btn btn-primary btn-block" onClick={onSave} disabled={busy}>
+            {busy ? 'Saving…' : 'Save details'}
+          </button>
+          {(detailStatus !== d.status || (parseFloat(detailAmount) || 0) !== d.amount) && (
+            <div className="slip-controls-note" style={{ color: 'var(--amber)' }}>
+              Unsaved changes — press Save details to apply them.
             </div>
-          </div>
-          <div className="field" style={{ width: '100%' }}>
-            <button className="btn btn-primary" onClick={onSave} disabled={busy}>
-              {busy ? 'Saving…' : 'Save details'}
-            </button>
+          )}
+          <div className="slip-controls-note">
+            Setting this to "Completed" credits {num(parseFloat(detailAmount) || 0)} {d.currency} to the user's holdings.
           </div>
         </div>
       </div>

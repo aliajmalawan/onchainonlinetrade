@@ -631,6 +631,140 @@ h1, h2, h3, h4 {
 /* Spans the full grid row so a detail panel opens directly beneath the
    specific card that triggered it, instead of always at the page bottom. */
 .wd-detail-panel { grid-column: 1 / -1; margin: 0; }
+
+/* Admin deposit request slip (receipt-style summary) */
+/* Detail panel layout: slip on the left, admin controls on the right.
+   Wraps by the panel's own width (the panel is often narrower than the
+   viewport), and is not .row because the mobile .row rule turns
+   flex-basis into a min-height and leaves a blank gap. */
+.slip-detail-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+  align-items: flex-start;
+  margin-top: 16px;
+}
+.slip-detail-grid > .dep-slip-wrap { flex: 1 1 300px; }
+.slip-detail-grid > .slip-controls { flex: 1 1 280px; min-width: 0; }
+.slip-controls {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px;
+  background: var(--panel);
+}
+.slip-controls-title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+.slip-controls-sub { font-size: 12px; color: var(--muted); margin-bottom: 14px; }
+.slip-controls-note { font-size: 12px; color: var(--muted); margin-top: 10px; }
+
+/* Pending / Completed / Reject segmented picker */
+.status-seg {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  padding: 4px;
+  background: var(--ink);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  margin-bottom: 12px;
+}
+.status-seg-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px 6px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.status-seg-btn:hover { color: var(--text); }
+.status-seg-dot { width: 8px; height: 8px; border-radius: 50%; flex: 0 0 auto; }
+.status-seg-pending .status-seg-dot { background: #f59e0b; }
+.status-seg-completed .status-seg-dot { background: var(--up); }
+.status-seg-failed .status-seg-dot { background: var(--down); }
+.status-seg-btn.active { background: #fff; box-shadow: 0 1px 2px rgba(16, 24, 40, 0.08); }
+.status-seg-pending.active { color: #b45309; border-color: rgba(245, 158, 11, 0.35); }
+.status-seg-completed.active { color: var(--up); border-color: rgba(22, 163, 74, 0.35); }
+.status-seg-failed.active { color: var(--down); border-color: rgba(220, 38, 38, 0.35); }
+
+/* Receipt-style slip for deposit / withdraw requests */
+.dep-slip-wrap { width: 100%; max-width: 360px; margin: 0 auto; }
+.dep-slip {
+  background: #f2f5f5;
+  border-radius: 16px;
+  padding: 16px 14px 14px;
+}
+.dep-slip-download { width: 100%; margin-top: 10px; }
+.dep-slip-brand { justify-content: center; margin-bottom: 38px; }
+.dep-slip-brand .brand-mark { width: 26px; height: 26px; background: #fff; }
+.dep-slip-brand .brand-name { font-size: 16px; }
+.dep-slip-card {
+  position: relative;
+  background: #fff;
+  border-radius: 14px;
+  padding: 40px 18px 16px;
+  text-align: center;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.05);
+}
+.dep-slip-icon {
+  position: absolute;
+  top: -28px; left: 50%;
+  transform: translateX(-50%);
+  width: 56px; height: 56px;
+  border-radius: 50%;
+  display: grid; place-items: center;
+  border: 4px solid #f2f5f5;
+}
+.dep-slip-icon svg { width: 26px; height: 26px; }
+.dep-slip-icon-completed { background: var(--up); }
+.dep-slip-icon-pending { background: #f59e0b; }
+.dep-slip-icon-failed { background: var(--down); }
+.dep-slip-amount {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 28px;
+  color: var(--text);
+  line-height: 1.15;
+  word-break: break-word;
+}
+.dep-slip-amount span { font-size: 15px; color: var(--muted); font-weight: 600; }
+.dep-slip-parties { margin: 6px 0 10px; font-size: 13px; color: var(--muted); line-height: 1.45; }
+.dep-slip-parties strong { font-weight: 600; color: var(--text); }
+.dep-slip-rows {
+  margin: 14px 0 0;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+  text-align: left;
+  display: grid;
+  gap: 9px;
+}
+.dep-slip-rows > div { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.dep-slip-rows dt { font-size: 12px; color: var(--muted); flex: 0 0 auto; }
+.dep-slip-rows dd {
+  margin: 0;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: var(--text);
+  text-align: right;
+  min-width: 0;
+  word-break: break-all;
+}
+.dep-slip-rows dd.mono { font-size: 11.5px; font-weight: 400; }
+.dep-slip-footer {
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+  font-size: 10.5px;
+  color: var(--faint);
+}
 .history-card-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .history-card-icon-group { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .history-card-icon-group img { width: 26px; height: 26px; border-radius: 50%; flex: 0 0 auto; }
@@ -1685,6 +1819,21 @@ table.data .num { font-family: var(--font-mono); text-align: right; }
 }
 .chat-meta { display: flex; align-items: center; gap: 4px; font-size: 10px; opacity: 0.65; margin-top: 4px; }
 .chat-bubble.mine .chat-meta { color: rgba(255, 255, 255, 0.85); }
+/* Admin-side read receipts: single tick = sent, bright double tick = seen. */
+.chat-ticks { display: inline-flex; }
+.chat-ticks.seen { color: #a5f3fc; }
+.chat-bubble.mine .chat-meta:has(.chat-ticks.seen) { opacity: 1; }
+.chat-seen-time {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(255, 255, 255, 0.18);
+  font-size: 10px;
+  text-align: right;
+  color: rgba(255, 255, 255, 0.7);
+}
+.chat-seen-time.seen { color: #cffafe; font-weight: 600; }
+.chat-convo-ticks { color: var(--faint); font-size: 12px; letter-spacing: -3px; margin-right: 6px; }
+.chat-convo-ticks.seen { color: var(--teal); }
 .chat-caption { margin-top: 6px; }
 
 .chat-attachment-image { display: block; border-radius: 10px; overflow: hidden; max-width: 220px; }

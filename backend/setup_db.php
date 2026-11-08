@@ -197,6 +197,7 @@ $pdo->exec("CREATE TABLE IF NOT EXISTS support_messages (
     sender     ENUM('user','admin') NOT NULL,
     message    TEXT NOT NULL,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    seen_at    TIMESTAMP NULL DEFAULT NULL, -- when the customer first saw a support reply
     FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
 ) ENGINE=InnoDB");
 

@@ -171,6 +171,14 @@ export default function Chat() {
                     <div className="chat-convo-preview muted">
                       {c.lastAt ? (
                         <>
+                          {c.lastSender === 'admin' && (
+                            <span
+                              className={'chat-convo-ticks' + (c.lastSeenByUser ? ' seen' : '')}
+                              title={c.lastSeenByUser ? 'Seen' : 'Sent'}
+                            >
+                              {c.lastSeenByUser ? '✓✓' : '✓'}
+                            </span>
+                          )}
                           {c.lastSender === 'admin' ? 'You: ' : ''}
                           {c.lastMessage || (c.lastAttachmentType === 'image' ? '📷 Photo' : '📎 Attachment')}
                         </>
@@ -218,6 +226,7 @@ export default function Chat() {
                 onSend={send}
                 placeholder="Reply…"
                 theirsAvatar={initials(active?.name)}
+                showSeen
               />
             </>
           )}
