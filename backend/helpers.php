@@ -506,48 +506,6 @@ function handle_chat_attachment(): array
 
 /** Shape a support-chat message row for the client. */
 /**
- * Bell notification for a customer when support sends them a chat message.
- * While an earlier one is still unread it is updated in place ("3 new
- * messages…") instead of stacking a new row per message. Never throws: a
- * notification problem must not fail the chat send itself.
- */
-function notify_support_message(int $userId, string $message, ?string $attachmentType): void
-{
-    try {
-        $text = trim(preg_replace('/\s+/', ' ', $message));
-        if ($text === '') {
-            $preview = $attachmentType === 'image' ? 'Sent you a photo' : 'Sent you a file';
-        } else {
-            $preview = '"' . (mb_strlen($text) > 80 ? mb_substr($text, 0, 80) . '…' : $text) . '"';
-        }
-
-        $stmt = db()->prepare(
-            "SELECT id, data FROM notifications
-             WHERE user_id = ? AND type = 'support_chat' AND is_read = 0
-             ORDER BY id DESC LIMIT 1"
-        );
-        $stmt->execute([$userId]);
-        $existing = $stmt->fetch();
-        $count = $existing ? ((int) (json_decode($existing['data'] ?? '', true)['count'] ?? 1)) + 1 : 1;
-
-        $body = $count === 1
-            ? "New message from Support: {$preview}"
-            : "{$count} new messages from Support. Latest: {$preview}";
-        $data = json_encode(['count' => $count]);
-
-        if ($existing) {
-            db()->prepare('UPDATE notifications SET message = ?, data = ?, created_at = NOW() WHERE id = ?')
-                ->execute([$body, $data, $existing['id']]);
-        } else {
-            db()->prepare("INSERT INTO notifications (user_id, type, message, data) VALUES (?, 'support_chat', ?, ?)")
-                ->execute([$userId, $body, $data]);
-        }
-    } catch (Throwable $e) {
-        error_log('notify_support_message: ' . $e->getMessage());
-    }
-}
-
-/**
  * support_messages.seen_at: when the customer first had a support reply on
  * screen (NULL = not seen yet; only set on sender='admin' rows). Added on
  * first use so an existing install needs no manual migration.

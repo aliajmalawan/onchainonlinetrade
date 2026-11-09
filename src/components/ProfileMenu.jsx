@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
-import { apiAdminGetMenuCounts, apiAdminMarkMenuSeen } from '../lib/backend'
+import { apiAdminGetMenuCounts, apiAdminMarkMenuSeen, apiGetSupportUnread } from '../lib/backend'
 
 const MENU_COUNTS_POLL_MS = 10000
 
@@ -50,6 +50,7 @@ export default function ProfileMenu() {
   const { pathname } = useLocation()
   const isAdmin = user?.role === 'admin'
   const [counts, setCounts] = useState({ chatUsers: 0, pendingDeposits: 0, pendingWithdrawals: 0 })
+  const [supportUnread, setSupportUnread] = useState(0) // customer: unseen support replies
 
   // Admin: keep the menu badges current. Being on a badge's page counts as
   // having seen it — that section is marked seen (and its badge hidden) on
@@ -76,6 +77,28 @@ export default function ProfileMenu() {
       clearInterval(id)
     }
   }, [isAdmin, pathname])
+
+  // Customer: badge the Customer Support item with support replies they
+  // haven't seen. The chat page itself marks them seen, so while it is open
+  // the badge stays hidden and isn't polled.
+  useEffect(() => {
+    if (!user || isAdmin) return
+    if (pathname === '/support') {
+      setSupportUnread(0)
+      return
+    }
+    let mounted = true
+    const load = () =>
+      apiGetSupportUnread()
+        .then((n) => mounted && setSupportUnread(n))
+        .catch(() => {})
+    load()
+    const id = setInterval(load, MENU_COUNTS_POLL_MS)
+    return () => {
+      mounted = false
+      clearInterval(id)
+    }
+  }, [user, isAdmin, pathname])
 
   useEffect(() => {
     if (!open) return
@@ -106,7 +129,7 @@ export default function ProfileMenu() {
       : ADMIN_ITEMS
     : ITEMS
 
-  // Admin menu item -> { count, title } for its red badge.
+  // Menu item -> { count, title } for its red badge.
   const badges = isAdmin
     ? {
         '/admin/deposits': {
@@ -122,7 +145,12 @@ export default function ProfileMenu() {
           title: `${counts.chatUsers} ${counts.chatUsers === 1 ? 'user has' : 'users have'} sent new messages`,
         },
       }
-    : {}
+    : {
+        '/support': {
+          count: supportUnread,
+          title: `${supportUnread} new ${supportUnread === 1 ? 'message' : 'messages'} from Support`,
+        },
+      }
   const totalBadge = Object.values(badges).reduce((sum, b) => sum + b.count, 0)
   const totalBadgeTitle = Object.values(badges)
     .filter((b) => b.count > 0)

@@ -107,6 +107,9 @@ export const apiUpdateAccount  = (name, email, phone) => request('/update_accoun
 export const apiGetSupportChat = (seen = false) =>
   request('/support_chat.php' + (seen ? '?seen=1' : '')).then((d) => d.messages)
 
+// Number of support replies the signed-in customer hasn't seen yet.
+export const apiGetSupportUnread = () => request('/support_unread.php').then((d) => d.messages)
+
 // Plain text keeps using the JSON path; an attachment switches to
 // multipart/form-data (same endpoint either way).
 export async function apiSendSupportChat(message, file) {

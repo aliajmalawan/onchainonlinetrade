@@ -49,5 +49,6 @@ yarn-error.log*
 # by id/email, no auth check) that must never be web-accessible.
 tmp_*.php
 
-# Live database backups (contain password hashes and login tokens)
-onchainonlinetra_*.sql
+# Database dumps/backups never go to GitHub (they hold password hashes and
+# login tokens).
+*.sql

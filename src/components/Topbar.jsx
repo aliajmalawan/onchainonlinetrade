@@ -30,16 +30,44 @@ export default function Topbar() {
 
   useEffect(() => {
     if (!user?.id) return
-    const saved = localStorage.getItem(`ct.notifLastReadAt.${user.id}`)
-    setLastReadAt(saved ? parseInt(saved, 10) : 0)
+    const key = `ct.notifLastReadAt.${user.id}`
+    let saved = null
+    try {
+      saved = localStorage.getItem(key)
+    } catch {
+      /* storage unavailable — fall through to "now" */
+    }
+    if (saved) {
+      setLastReadAt(parseInt(saved, 10))
+      return
+    }
+    // First time on this browser: start counting from now, so the badge
+    // doesn't light up with the account's entire trade history at once.
+    const now = Date.now()
+    setLastReadAt(now)
+    try {
+      localStorage.setItem(key, String(now))
+    } catch {
+      /* best effort */
+    }
   }, [user?.id])
 
+  // Customer: trades and withdrawals are polled too, so a new trade or a
+  // withdrawal update raises the bell badge without a page reload.
   useEffect(() => {
     if (isAdmin) return
-    apiGetTradeHistory()
-      .then(setTrades)
-      .catch(() => setTrades([]))
-      .finally(() => setLoadingTrades(false))
+    let mounted = true
+    const load = () =>
+      apiGetTradeHistory()
+        .then((rows) => mounted && setTrades(rows))
+        .catch(() => mounted && setTrades((prev) => prev ?? []))
+        .finally(() => mounted && setLoadingTrades(false))
+    load()
+    const id = setInterval(load, 10000)
+    return () => {
+      mounted = false
+      clearInterval(id)
+    }
   }, [isAdmin])
 
   useEffect(() => {
@@ -82,10 +110,18 @@ export default function Topbar() {
 
   useEffect(() => {
     if (isAdmin) return
-    apiGetWithdrawHistory()
-      .then(setWithdraws)
-      .catch(() => setWithdraws([]))
-      .finally(() => setLoadingWithdraws(false))
+    let mounted = true
+    const load = () =>
+      apiGetWithdrawHistory()
+        .then((rows) => mounted && setWithdraws(rows))
+        .catch(() => mounted && setWithdraws((prev) => prev ?? []))
+        .finally(() => mounted && setLoadingWithdraws(false))
+    load()
+    const id = setInterval(load, 10000)
+    return () => {
+      mounted = false
+      clearInterval(id)
+    }
   }, [isAdmin])
 
   // Admin: notification feed is incoming withdrawal requests plus every
@@ -191,15 +227,15 @@ export default function Topbar() {
     }
   }
 
-  // server-side notifications (like KYC rejected, or a new support message).
-  // These carry their own read flag, so unread is taken from the server.
+  // server-side notifications (like KYC rejected). These carry their own
+  // read flag, so unread is taken from the server.
   const serverNotifications = (notifications ?? []).map((n) => ({
     id: `notif-${n.id}`,
     label: n.message,
     time: n.createdAt,
     displayTime: new Date(n.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-    action: n.type === 'support_chat' ? 'Open chat' : 'View',
-    to: n.type === 'support_chat' ? '/support' : '/account/notifications',
+    action: 'View',
+    to: '/account/notifications',
     unread: !n.isRead,
   }))
 
@@ -314,9 +350,15 @@ export default function Topbar() {
 
   const displayNotifications = allNotifications
   const loading = isAdmin ? adminWithdrawRequests === null && adminTrades === null : loadingTrades || loadingWithdraws
+  // Customer badge: everything new since the bell was last opened — every
+  // new trade and withdrawal, not just the few listed in the dropdown.
+  const isNewSinceRead = (createdAt) => new Date(createdAt).getTime() > lastReadAt
   const unreadCount = isAdmin
     ? (adminWithdrawRequests ?? []).filter((w) => w.status === 'pending').length + adminTradeNotifications.filter(isUnread).length
-    : [...accountNotifications, ...serverNotifications, ...tradeNotifications, ...withdrawNotifications].filter(isUnread).length
+    : accountNotifications.filter(isUnread).length +
+      serverNotifications.filter(isUnread).length +
+      sortedTrades.filter((t) => isNewSinceRead(t.createdAt)).length +
+      (withdraws ?? []).filter((w) => isNewSinceRead(w.createdAt)).length
 
   function go(to) {
     setOpen(false)
@@ -339,7 +381,11 @@ export default function Topbar() {
   }
 
   function handleBellClick() {
-    setOpen((value) => !value)
+    const opening = !open
+    setOpen(opening)
+    // Customer: opening the bell counts as seeing what's new, so the badge
+    // clears (the list itself stays as it was).
+    if (opening && !isAdmin && unreadCount > 0) handleMarkAllRead()
   }
 
   return (
@@ -384,7 +430,7 @@ export default function Topbar() {
               aria-label="Open notifications"
             >
               <span aria-hidden="true">🔔</span>
-              {unreadCount > 0 && <span className="notification-badge">{unreadCount}</span>}
+              {unreadCount > 0 && <span className="notification-badge">{unreadCount > 99 ? '99+' : unreadCount}</span>}
             </button>
 
             {open && (

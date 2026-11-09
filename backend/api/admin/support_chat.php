@@ -49,9 +49,6 @@ if ($method === 'POST') {
         ->execute([$userId, 'admin', $message, $attachmentPath, $attachmentName, $attachmentType]);
     $messageId = (int) db()->lastInsertId();
 
-    // Ring the customer's notification bell too, not just the chat.
-    notify_support_message($userId, $message, $attachmentType);
-
     $row = db()->query('SELECT *, UNIX_TIMESTAMP(created_at) AS created_ts FROM support_messages WHERE id = ' . $messageId)->fetch();
     json_out(['message' => public_message($row)], 201);
 }

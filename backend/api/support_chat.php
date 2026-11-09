@@ -7,9 +7,6 @@ $method = $_SERVER['REQUEST_METHOD'];
 
 // GET -> this user's own conversation with support
 if ($method === 'GET') {
-    // id as a tiebreaker: created_at is second-precision, so the auto-reply
-    // (inserted right after a first message, in the same request) can land
-    // in the very same second and would otherwise sort unpredictably.
     // ?seen=1 is sent only while the chat is actually on screen (not from a
     // background tab), so support's replies count as seen only then. Each
     // reply keeps the time it was first seen.
@@ -17,11 +14,11 @@ if ($method === 'GET') {
     if (($_GET['seen'] ?? '') === '1') {
         db()->prepare("UPDATE support_messages SET seen_at = NOW() WHERE user_id = ? AND sender = 'admin' AND seen_at IS NULL")
             ->execute([$u['id']]);
-        // The chat itself is now on screen, so its bell notification is read.
-        db()->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'support_chat' AND is_read = 0")
-            ->execute([$u['id']]);
     }
 
+    // id as a tiebreaker: created_at is second-precision, so the auto-reply
+    // (inserted right after a first message, in the same request) can land
+    // in the very same second and would otherwise sort unpredictably.
     $stmt = db()->prepare('SELECT *, UNIX_TIMESTAMP(created_at) AS created_ts FROM support_messages WHERE user_id = ? ORDER BY created_at ASC, id ASC');
     $stmt->execute([$u['id']]);
     json_out(['messages' => array_map('public_message', $stmt->fetchAll())]);

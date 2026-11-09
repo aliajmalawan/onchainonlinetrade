@@ -7,7 +7,9 @@ require_auth();
 $u = current_user();
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $stmt = db()->prepare('SELECT *, UNIX_TIMESTAMP(created_at) AS created_ts FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 100');
+    // Support chat messages are signalled by the Customer Support menu badge,
+    // not the bell — older 'support_chat' rows are left out.
+    $stmt = db()->prepare("SELECT *, UNIX_TIMESTAMP(created_at) AS created_ts FROM notifications WHERE user_id = ? AND type <> 'support_chat' ORDER BY created_at DESC LIMIT 100");
     $stmt->execute([$u['id']]);
     $rows = $stmt->fetchAll();
     json_out(['notifications' => array_map('public_notification', $rows)]);
