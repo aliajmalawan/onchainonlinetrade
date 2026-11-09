@@ -9,18 +9,29 @@ function token() {
   return localStorage.getItem('ct.token')
 }
 
+// Shown instead of a bare "Request failed" when the backend never answered
+// with its own JSON error — it's down, unreachable, or crashed.
+const SERVER_DOWN = 'The server is not responding right now. Please try again in a moment.'
+
 async function request(path, { method = 'GET', body } = {}) {
-  const res = await fetch(BASE + path, {
-    method,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token() ? { Authorization: 'Bearer ' + token() } : {}),
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  })
+  let res
+  try {
+    res = await fetch(BASE + path, {
+      method,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token() ? { Authorization: 'Bearer ' + token() } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+    })
+  } catch {
+    const err = new Error(SERVER_DOWN) // no connection at all
+    err.status = 0
+    throw err
+  }
   const data = await res.json().catch(() => ({}))
   if (!res.ok) {
-    const err = new Error(data.error || 'Request failed')
+    const err = new Error(data.error || (res.status >= 500 ? SERVER_DOWN : 'Request failed'))
     err.status = res.status
     throw err
   }
@@ -133,6 +144,11 @@ export const apiAdminUpdateHolding = (holdingId, amount) => request('/admin/upda
 export const apiAdminDeleteHolding = (holdingId) => request('/admin/delete_holding.php', { method: 'POST', body: { holdingId } })
 export const apiAdminUpdateModes = (userId, payload) => request('/admin/update_trade_mode.php', { method: 'POST', body: { userId, ...payload } }).then((d) => d.user)
 export const apiAdminImpersonate = (userId) => request('/admin/impersonate.php', { method: 'POST', body: { userId } })
+// Admin menu badges -> { chatUsers, pendingDeposits, pendingWithdrawals }
+export const apiAdminGetMenuCounts = () => request('/admin/menu_counts.php')
+// Marks a badge section ('deposits' | 'withdrawals' | 'chat') as seen.
+export const apiAdminMarkMenuSeen = (section) =>
+  request('/admin/menu_counts.php', { method: 'POST', body: { section } })
 export const apiAdminGetChats = () => request('/admin/support_chats.php').then((d) => d.conversations)
 export const apiAdminGetChat  = (userId) => request('/admin/support_chat.php?userId=' + userId).then((d) => d.messages)
 

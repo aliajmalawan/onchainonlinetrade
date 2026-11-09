@@ -7,7 +7,7 @@ require_auth();
 $u = current_user();
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-    $stmt = db()->prepare('SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 100');
+    $stmt = db()->prepare('SELECT *, UNIX_TIMESTAMP(created_at) AS created_ts FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 100');
     $stmt->execute([$u['id']]);
     $rows = $stmt->fetchAll();
     json_out(['notifications' => array_map('public_notification', $rows)]);
@@ -30,6 +30,8 @@ function public_notification($n) {
         'message' => $n['message'],
         'data' => isset($n['data']) ? json_decode($n['data'], true) : null,
         'isRead' => isset($n['is_read']) ? (bool) $n['is_read'] : false,
-        'createdAt' => $n['created_at'],
+        // UTC ISO time, so every viewer's browser reads it correctly whatever
+        // timezone the database server runs in.
+        'createdAt' => gmdate('c', (int) $n['created_ts']),
     ];
 }

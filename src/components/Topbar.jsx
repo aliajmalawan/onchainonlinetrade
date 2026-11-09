@@ -191,14 +191,16 @@ export default function Topbar() {
     }
   }
 
-  // server-side notifications (like KYC rejected)
+  // server-side notifications (like KYC rejected, or a new support message).
+  // These carry their own read flag, so unread is taken from the server.
   const serverNotifications = (notifications ?? []).map((n) => ({
     id: `notif-${n.id}`,
     label: n.message,
     time: n.createdAt,
     displayTime: new Date(n.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }),
-    action: 'View',
-    to: '/account/notifications',
+    action: n.type === 'support_chat' ? 'Open chat' : 'View',
+    to: n.type === 'support_chat' ? '/support' : '/account/notifications',
+    unread: !n.isRead,
   }))
 
   // Only genuine timed trades (Buy Long/Sell Short) carry a direction and a
@@ -302,7 +304,7 @@ export default function Topbar() {
       }
     })
 
-  const isUnread = (item) => new Date(item.time).getTime() > lastReadAt
+  const isUnread = (item) => item.unread ?? new Date(item.time).getTime() > lastReadAt
 
   const allNotifications = isAdmin
     ? [...adminWithdrawNotifications, ...adminTradeNotifications].sort((a, b) => new Date(b.time) - new Date(a.time)).slice(0, 6)
@@ -333,6 +335,7 @@ export default function Topbar() {
     ;(notifications ?? []).filter((n) => !n.isRead).forEach((n) => {
       apiMarkNotificationRead(n.id).catch(() => {})
     })
+    setNotifications((prev) => prev?.map((n) => ({ ...n, isRead: true })) ?? prev)
   }
 
   function handleBellClick() {

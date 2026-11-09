@@ -107,7 +107,7 @@ export default function Notifications() {
     const serverItems = (notifications ?? []).map((n) => ({
       id: `notif-${n.id}`,
       date: n.createdAt,
-      type: 'Alert',
+      type: n.type === 'support_chat' ? 'Support' : 'Alert',
       details: n.message,
       status: n.isRead ? 'Read' : 'Unread',
     }))

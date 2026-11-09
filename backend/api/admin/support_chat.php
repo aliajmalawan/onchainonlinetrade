@@ -47,8 +47,12 @@ if ($method === 'POST') {
 
     db()->prepare('INSERT INTO support_messages (user_id, sender, message, attachment_path, attachment_name, attachment_type) VALUES (?, ?, ?, ?, ?, ?)')
         ->execute([$userId, 'admin', $message, $attachmentPath, $attachmentName, $attachmentType]);
+    $messageId = (int) db()->lastInsertId();
 
-    $row = db()->query('SELECT *, UNIX_TIMESTAMP(created_at) AS created_ts FROM support_messages WHERE id = ' . (int) db()->lastInsertId())->fetch();
+    // Ring the customer's notification bell too, not just the chat.
+    notify_support_message($userId, $message, $attachmentType);
+
+    $row = db()->query('SELECT *, UNIX_TIMESTAMP(created_at) AS created_ts FROM support_messages WHERE id = ' . $messageId)->fetch();
     json_out(['message' => public_message($row)], 201);
 }
 

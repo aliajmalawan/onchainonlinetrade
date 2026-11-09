@@ -2275,6 +2275,35 @@ table.data .num { font-family: var(--font-mono); text-align: right; }
 
 /* KYC badge in profile dropdown */
 .profile-dropdown-item { display: flex; align-items: center; justify-content: space-between; }
+
+/* Live Chat unread count (admin menu item and the menu button itself). */
+.menu-count-badge {
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--down);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 20px;
+  text-align: center;
+  margin-left: 8px;
+  flex: 0 0 auto;
+}
+.profile-menu-trigger { position: relative; }
+.menu-trigger-badge {
+  position: absolute;
+  top: -6px;
+  right: -6px;
+  margin: 0;
+  min-width: 18px;
+  height: 18px;
+  line-height: 18px;
+  padding: 0 5px;
+  font-size: 10px;
+  box-shadow: 0 0 0 2px var(--panel);
+}
 .profile-dropdown-item .kyc-badge { margin-left: 8px; }
 .profile-dropdown-item .kyc-badge .badge { padding: 2px 6px; font-size: 11px; }
 

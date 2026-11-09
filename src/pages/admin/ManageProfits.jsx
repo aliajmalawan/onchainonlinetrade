@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { apiAdminGetTradeTimers, apiAdminUpdateTradeTimers } from '../../lib/backend'
 import { num } from '../../lib/format'
 
@@ -15,6 +16,7 @@ export default function ManageProfits() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   const [saved, setSaved] = useState(false)
+  const navigate = useNavigate()
 
   function load(list) {
     setTimers(list)
@@ -25,10 +27,20 @@ export default function ManageProfits() {
     apiAdminGetTradeTimers()
       .then(load)
       .catch((err) => {
+        // This page is unlisted and only some admins may use it; for anyone
+        // else it behaves like an unknown URL (which redirects to the dashboard).
+        if (err.status === 404 || err.status === 403) {
+          navigate('/dashboard', { replace: true })
+          return
+        }
         setTimers([])
         setError(err.message)
       })
-  }, [])
+  }, [navigate])
+
+  // Render nothing until access is confirmed, so the page never flashes for
+  // an admin who isn't allowed to see it.
+  if (timers === null) return null
 
   const changed = (timers ?? []).filter((t) => parseFloat(draft[t.duration]) !== t.percent)
   const invalid = (timers ?? []).find((t) => !isValidPercent(draft[t.duration]))
@@ -63,7 +75,6 @@ export default function ManageProfits() {
       </div>
 
       <div className="panel panel-pad">
-        {timers === null && <div className="muted">Loading…</div>}
         {timers?.length === 0 && !error && <div className="muted">No trade timers found.</div>}
 
         {timers?.length > 0 && (

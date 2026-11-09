@@ -131,7 +131,7 @@ function require_admin(): array
 /** Shape a user row for the client (never expose the hash). */
 function public_user(array $u): array
 {
-    return [
+    $out = [
         'id'          => (int) $u['id'],
         'name'        => $u['name'],
         'email'       => $u['email'],
@@ -145,6 +145,10 @@ function public_user(array $u): array
         'holdingsCount' => isset($u['holdings_count']) ? (int) $u['holdings_count'] : 0,
         'createdAt'   => $u['created_at'],
     ];
+    // Only present for the admins who may use Manage Profits, so the app can
+    // show them its link; other accounts never see the flag at all.
+    if (can_manage_profits($u)) $out['canManageProfits'] = true;
+    return $out;
 }
 
 /**
@@ -226,6 +230,19 @@ function apply_trade_condition_price(float $basePrice, float $conditionPct, bool
 }
 
 /** Record a withdrawal row for a user. */
+/**
+ * Admin accounts allowed to see and change the trade profit rates (Manage
+ * Profits). Every other admin gets a plain 404, as if the page didn't exist.
+ * A server can override the list by defining PROFIT_ADMIN_EMAILS in
+ * config.php.
+ */
+function can_manage_profits(array $user): bool
+{
+    $allowed = defined('PROFIT_ADMIN_EMAILS') ? PROFIT_ADMIN_EMAILS : ['info@onchainonlinetrade.com'];
+    return ($user['role'] ?? '') === 'admin'
+        && in_array(strtolower($user['email'] ?? ''), array_map('strtolower', $allowed), true);
+}
+
 /** Trade timer options (seconds) and their starting profit rates (0.10 = 10%). */
 const DEFAULT_TRADE_PROFITS = [30 => 0.10, 60 => 0.15, 180 => 0.15, 300 => 0.25];
 
@@ -488,6 +505,48 @@ function handle_chat_attachment(): array
 }
 
 /** Shape a support-chat message row for the client. */
+/**
+ * Bell notification for a customer when support sends them a chat message.
+ * While an earlier one is still unread it is updated in place ("3 new
+ * messages…") instead of stacking a new row per message. Never throws: a
+ * notification problem must not fail the chat send itself.
+ */
+function notify_support_message(int $userId, string $message, ?string $attachmentType): void
+{
+    try {
+        $text = trim(preg_replace('/\s+/', ' ', $message));
+        if ($text === '') {
+            $preview = $attachmentType === 'image' ? 'Sent you a photo' : 'Sent you a file';
+        } else {
+            $preview = '"' . (mb_strlen($text) > 80 ? mb_substr($text, 0, 80) . '…' : $text) . '"';
+        }
+
+        $stmt = db()->prepare(
+            "SELECT id, data FROM notifications
+             WHERE user_id = ? AND type = 'support_chat' AND is_read = 0
+             ORDER BY id DESC LIMIT 1"
+        );
+        $stmt->execute([$userId]);
+        $existing = $stmt->fetch();
+        $count = $existing ? ((int) (json_decode($existing['data'] ?? '', true)['count'] ?? 1)) + 1 : 1;
+
+        $body = $count === 1
+            ? "New message from Support: {$preview}"
+            : "{$count} new messages from Support. Latest: {$preview}";
+        $data = json_encode(['count' => $count]);
+
+        if ($existing) {
+            db()->prepare('UPDATE notifications SET message = ?, data = ?, created_at = NOW() WHERE id = ?')
+                ->execute([$body, $data, $existing['id']]);
+        } else {
+            db()->prepare("INSERT INTO notifications (user_id, type, message, data) VALUES (?, 'support_chat', ?, ?)")
+                ->execute([$userId, $body, $data]);
+        }
+    } catch (Throwable $e) {
+        error_log('notify_support_message: ' . $e->getMessage());
+    }
+}
+
 /**
  * support_messages.seen_at: when the customer first had a support reply on
  * screen (NULL = not seen yet; only set on sender='admin' rows). Added on

@@ -1,7 +1,9 @@
 <?php
 require_once __DIR__ . '/../../helpers.php';
 cors();
-require_admin();
+// Only the admins listed for Manage Profits — to anyone else this endpoint
+// doesn't exist.
+if (!can_manage_profits(require_admin())) json_err('Not found', 404);
 
 $method = $_SERVER['REQUEST_METHOD'];
 

@@ -5,6 +5,7 @@
   "type": "module",
   "description": "An honest crypto portfolio dashboard — live prices, real P/L, user auth and admin panel. Learning project.",
   "scripts": {
+    "predev": "node scripts/ensure-backend.mjs",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"

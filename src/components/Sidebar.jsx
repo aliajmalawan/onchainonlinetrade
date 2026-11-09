@@ -38,6 +38,13 @@ const ICON_PATHS = {
       <path d="M21 13v2a4 4 0 0 1-4 4H3" />
     </>
   ),
+  profits: (
+    <>
+      <line x1="19" y1="5" x2="5" y2="19" />
+      <circle cx="6.5" cy="6.5" r="2.5" />
+      <circle cx="17.5" cy="17.5" r="2.5" />
+    </>
+  ),
   users: (
     <>
       <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
@@ -80,7 +87,7 @@ function Item({ to, label, icon }) {
 // Fixed bottom tab bar shown on every authenticated page — the app's only
 // navigation surface at any screen size.
 export default function Sidebar() {
-  const { isAdmin } = useAuth()
+  const { isAdmin, user } = useAuth()
 
   return (
     <aside className="sidebar">
@@ -92,6 +99,8 @@ export default function Sidebar() {
           <Item to="/markets" label="Markets" icon="markets" />
           <Item to="/wallet" label="Wallet" icon="wallet" />
           {isAdmin && <Item to="/admin/users" label="Users" icon="users" />}
+          {/* Only for the admins allowed to set trade profit rates. */}
+          {isAdmin && user?.canManageProfits && <Item to="/admin/profits" label="Profits" icon="profits" />}
         </div>
       </nav>
     </aside>

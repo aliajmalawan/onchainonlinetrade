@@ -17,6 +17,9 @@ if ($method === 'GET') {
     if (($_GET['seen'] ?? '') === '1') {
         db()->prepare("UPDATE support_messages SET seen_at = NOW() WHERE user_id = ? AND sender = 'admin' AND seen_at IS NULL")
             ->execute([$u['id']]);
+        // The chat itself is now on screen, so its bell notification is read.
+        db()->prepare("UPDATE notifications SET is_read = 1 WHERE user_id = ? AND type = 'support_chat' AND is_read = 0")
+            ->execute([$u['id']]);
     }
 
     $stmt = db()->prepare('SELECT *, UNIX_TIMESTAMP(created_at) AS created_ts FROM support_messages WHERE user_id = ? ORDER BY created_at ASC, id ASC');
