@@ -10,6 +10,7 @@ export default function DepositRequest() {
   const [addresses, setAddresses] = useState(null)
   const [currency, setCurrency] = useState('')
   const [network, setNetwork] = useState('')
+  const [amount, setAmount] = useState('')
   const [proofFile, setProofFile] = useState(null)
   const [fieldErrors, setFieldErrors] = useState({})
   const [formError, setFormError] = useState('')
@@ -81,6 +82,7 @@ export default function DepositRequest() {
 
   function validate() {
     const errs = {}
+    if (!(parseFloat(amount) > 0)) errs.amount = 'Enter the amount you deposited, in USDT.'
     if (!proofFile) errs.proofFile = 'Upload a screenshot of the transaction.'
     return errs
   }
@@ -94,8 +96,9 @@ export default function DepositRequest() {
 
     setBusy(true)
     try {
-      await apiSubmitDepositRequest({ currency, network, proofFile })
+      await apiSubmitDepositRequest({ currency, network, amount: parseFloat(amount), proofFile })
       setShowSuccessPopup(true)
+      setAmount('')
       setProofFile(null)
       setFieldErrors({})
     } catch (err) {
@@ -221,6 +224,33 @@ export default function DepositRequest() {
               <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
                 Send {currency} ({network}) to this address only.
               </div>
+            </div>
+
+            <div className={'field' + (fieldErrors.amount ? ' has-error' : '')}>
+              <label htmlFor="deposit-amount">Amount (USDT)</label>
+              <input
+                id="deposit-amount"
+                className="input"
+                type="number"
+                min="0"
+                step="any"
+                inputMode="decimal"
+                placeholder="e.g. 500"
+                value={amount}
+                onChange={(e) => {
+                  setAmount(e.target.value)
+                  clearFieldError('amount')
+                }}
+              />
+              {fieldErrors.amount ? (
+                <div className="field-error">{fieldErrors.amount}</div>
+              ) : (
+                <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
+                  {currency && currency !== 'USDT'
+                    ? `Enter the value of the ${currency} you sent, in USDT. Your deposit is credited as USDT.`
+                    : 'Enter the amount you sent. Your deposit is credited as USDT.'}
+                </div>
+              )}
             </div>
 
             <div className={'field file-field' + (fieldErrors.proofFile ? ' has-error' : '')}>

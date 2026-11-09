@@ -65,12 +65,14 @@ export const apiConvert = (payload) => request('/convert.php', { method: 'POST',
 export const apiGetWithdrawHistory = () => request('/withdraw_history.php').then((d) => d.withdraws)
 export const apiSubmitWithdrawRequest = (payload) => request('/withdraw_request.php', { method: 'POST', body: payload })
 export const apiGetDepositHistory = () => request('/deposit_history.php').then((d) => d.deposits)
-export async function apiSubmitDepositRequest({ currency, network, proofFile }) {
+// amount: the USDT value the user sent.
+export async function apiSubmitDepositRequest({ currency, network, amount, proofFile }) {
   const ROOT = (import.meta.env.VITE_BACKEND_URL || '/api').replace(/\/api$/, '')
   const url = ROOT + '/api/deposit_request.php'
   const fd = new FormData()
   fd.append('currency', currency)
   fd.append('network', network)
+  fd.append('amount', amount)
   if (proofFile) fd.append('proof', proofFile)
 
   const headers = {}

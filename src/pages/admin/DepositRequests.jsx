@@ -108,7 +108,8 @@ function DepositDetailPanel({ d, detailStatus, onDetailStatusChange, detailAmoun
               placeholder="Enter the amount from the screenshot"
             />
             <div className="muted" style={{ marginTop: 6, fontSize: 12 }}>
-              Enter the USDT value of the transfer from the screenshot
+              {d.amount > 0 ? `The user entered ${num(d.amount)} USDT. ` : ''}
+              Check it against the screenshot and correct it if needed
               {d.currency !== 'USDT' ? ` (the user paid in ${d.currency})` : ''}. It is always credited as USDT.
             </div>
           </div>

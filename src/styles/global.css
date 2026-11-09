@@ -632,6 +632,78 @@ h1, h2, h3, h4 {
    specific card that triggered it, instead of always at the page bottom. */
 .wd-detail-panel { grid-column: 1 / -1; margin: 0; }
 
+/* Deposit history summary cards, two side by side. Labels wrap instead of
+   truncating, and the value scales with the card's own width (container
+   query), so nothing is ever cut off however narrow the column gets. */
+.dh-stats {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 22px;
+}
+.dh-stat {
+  container-type: inline-size;
+  position: relative;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 4px 14px rgba(16, 24, 40, 0.04);
+  padding: 18px 18px 16px;
+}
+.dh-stat-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.dh-stat-label {
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.35;
+  color: var(--muted);
+  padding-top: 2px;
+}
+.dh-stat-icon {
+  flex: 0 0 auto;
+  width: 36px; height: 36px;
+  border-radius: 10px;
+  display: grid; place-items: center;
+  background: rgba(15, 156, 143, 0.1);
+  color: var(--teal);
+}
+.dh-stat-icon svg { width: 18px; height: 18px; }
+.dh-stat-up .dh-stat-icon { background: rgba(22, 163, 74, 0.1); color: var(--up); }
+.dh-stat-amber .dh-stat-icon { background: rgba(179, 105, 10, 0.1); color: var(--amber); }
+.dh-stat-value {
+  margin-top: 14px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(20px, 12cqi, 30px);
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+  color: var(--text);
+  white-space: nowrap;
+}
+.dh-stat-unit { font-size: 0.5em; font-weight: 600; color: var(--muted); margin-left: 5px; letter-spacing: 0; }
+.dh-stat-hint {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 12.5px;
+  line-height: 1.4;
+  color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .dh-stats { gap: 10px; }
+  .dh-stat { padding: 14px 14px 12px; border-radius: 12px; }
+  .dh-stat-label { font-size: 12px; }
+  .dh-stat-icon { width: 32px; height: 32px; border-radius: 9px; }
+  .dh-stat-icon svg { width: 16px; height: 16px; }
+  .dh-stat-value { margin-top: 10px; font-size: clamp(18px, 12cqi, 30px); }
+  .dh-stat-hint { margin-top: 8px; padding-top: 8px; font-size: 11.5px; }
+}
+@media (max-width: 340px) {
+  .dh-stats { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* Admin Manage Profits: one row per trade timer */
 .profit-rows { display: grid; gap: 0; }
 .profit-row {

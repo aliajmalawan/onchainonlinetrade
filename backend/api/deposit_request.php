@@ -8,14 +8,21 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') json_err('Method not allowed', 405);
 // Submitted as multipart/form-data because a transaction screenshot is required.
 $currency = strtoupper(trim($_POST['currency'] ?? ''));
 $network  = strtoupper(trim($_POST['network'] ?? ''));
-// The user no longer states an amount or reference up front — an admin
-// sets the real amount (from the screenshot) when reviewing the request,
-// via admin/update_deposit_status.php.
-$amount   = 0;
-$txId     = trim($_POST['txId'] ?? '');
+// The USDT value the user says they sent (deposits are always credited as
+// USDT). An admin checks it against the screenshot and can correct it
+// before completing the request, via admin/update_deposit_status.php.
+$amountRaw = trim($_POST['amount'] ?? '');
+$amount    = is_numeric($amountRaw) ? (float) $amountRaw : 0;
+$txId      = trim($_POST['txId'] ?? '');
 
 if ($currency === '' || $network === '') {
     json_err('Currency and network are required.', 400);
+}
+if ($amount <= 0) {
+    json_err('Enter the amount you deposited, in USDT.', 400);
+}
+if ($amount > 1000000000) {
+    json_err('That amount is too large.', 400);
 }
 if (empty($_FILES['proof']) || !is_uploaded_file($_FILES['proof']['tmp_name'])) {
     json_err('A screenshot of the transaction is required.', 400);
