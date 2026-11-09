@@ -48,12 +48,15 @@ export default function UpdateAccount() {
     }
   }
 
+  // The super admin is the one admin trusted with Manage Profits.
+  const adminTitle = user?.canManageProfits ? 'Super Admin' : 'Admin'
+
   return (
     <div>
       <div className="page-head">
         <div className="eyebrow">Account</div>
         <h1>{isAdmin ? 'Profile' : 'Update account'}</h1>
-        <p>{isAdmin ? 'Super admin account details.' : 'Change your display name, email or phone number.'}</p>
+        <p>{isAdmin ? `${adminTitle} account details.` : 'Change your display name, email or phone number.'}</p>
       </div>
 
       {isAdmin ? (
@@ -67,7 +70,7 @@ export default function UpdateAccount() {
                 <h2 style={{ fontSize: 18, marginBottom: 4 }}>{user.name}</h2>
                 <div className="muted" style={{ fontSize: 13, wordBreak: 'break-all' }}>{user.email}</div>
                 <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginTop: 10 }}>
-                  <span className="badge badge-admin">Super Admin</span>
+                  <span className="badge badge-admin">{adminTitle}</span>
                   <span className="muted mono" style={{ fontSize: 12 }}>Joined {fmtDate(user.createdAt)}</span>
                 </div>
               </div>
